@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import NavBar from './NavBar';
-import SearchBar from './components/SearchBar';
+import SearchBar from '../components/SearchBar';
 import ResultsTabs from './components/ResultsTabs';
 import ResultsList from './components/ResultsList';
 import ImageGallery from './components/ImageGallery';
@@ -73,53 +73,6 @@ export default function Home() {
           </div>
         )}
       </main>
-    </div>
-  );
-}
-EOFcat > src/app/components/VideoGallery.tsx << 'EOF'
-interface VideoResult {
-  url: string;
-  title: string;
-  thumbnail: string;
-  duration?: string;
-}
-
-interface VideoGalleryProps {
-  videos: VideoResult[];
-}
-
-export default function VideoGallery({ videos }: VideoGalleryProps) {
-  if (videos.length === 0) {
-    return (
-      <div className="text-center py-8 text-gray-500">
-        No videos found. Try a different search.
-      </div>
-    );
-  }
-
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {videos.map((video, index) => (
-        <div key={index} className="border rounded-lg overflow-hidden hover:shadow-lg transition-shadow">
-          <a href={video.url} target="_blank" rel="noopener noreferrer">
-            <div className="relative">
-              <img
-                src={video.thumbnail}
-                alt={video.title}
-                className="w-full h-48 object-cover"
-              />
-              {video.duration && (
-                <span className="absolute bottom-2 right-2 bg-black bg-opacity-75 text-white text-xs px-2 py-1 rounded">
-                  {video.duration}
-                </span>
-              )}
-            </div>
-            <div className="p-4">
-              <h3 className="text-sm font-semibold text-gray-900 line-clamp-2">{video.title}</h3>
-            </div>
-          </a>
-        </div>
-      ))}
     </div>
   );
 }
