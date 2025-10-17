@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/local";
+import { Inter } from "next/font/google"; // Use Google, not local, for Inter
 import "./globals.css";
 
 const inter = Inter({
-  variable: "Inter",
+  variable: "--font-inter", // Recommended variable naming format
   subsets: ["latin"],
 });
 
@@ -19,9 +19,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+      <body className={`${inter.variable} antialiased`}>
         {children}
       </body>
     </html>
