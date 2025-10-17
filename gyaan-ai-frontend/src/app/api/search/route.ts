@@ -35,6 +35,23 @@ interface GoogleSearchItem {
   };
 }
 
+// DuckDuckGo Instant Answer result type
+interface DuckDuckGoResult {
+  Text?: string;
+  FirstURL?: string;
+  Icon?: {
+    URL?: string;
+  };
+}
+
+interface DuckDuckGoRelatedTopic {
+  Text?: string;
+  FirstURL?: string;
+  Icon?: {
+    URL?: string;
+  };
+}
+
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
@@ -140,45 +157,116 @@ export async function GET(request: NextRequest) {
           };
         });
       }
-      // Fallback to NewsAPI for web search if Google Search API is not configured
+      // Try DuckDuckGo Instant Answer API as fallback
       else {
-        const newsApiKey = process.env.NEWSAPI_KEY;
-        
-        if (!newsApiKey) {
-          return NextResponse.json(
-            { error: 'No search API keys configured (Google Search or NewsAPI)' },
-            { status: 500 }
+        try {
+          const ddgResponse = await fetch(
+            `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&skip_disambig=1`
           );
+
+          if (ddgResponse.ok) {
+            const ddgData = await ddgResponse.json();
+            const ddgResults: SearchResult[] = [];
+
+            // Process main result if available
+            if (ddgData.AbstractText && ddgData.AbstractURL) {
+              ddgResults.push({
+                id: `ddg-main-${Date.now()}`,
+                title: ddgData.Heading || query,
+                description: ddgData.AbstractText,
+                url: ddgData.AbstractURL,
+                imageUrl: ddgData.Image || undefined,
+                videoUrl: undefined,
+                source: ddgData.AbstractSource || 'DuckDuckGo',
+                publishedAt: new Date().toISOString()
+              });
+            }
+
+            // Process related topics
+            if (ddgData.RelatedTopics && Array.isArray(ddgData.RelatedTopics)) {
+              ddgData.RelatedTopics.forEach((topic: DuckDuckGoRelatedTopic | { Topics?: DuckDuckGoRelatedTopic[] }, index: number) => {
+                // Handle grouped topics
+                if ('Topics' in topic && Array.isArray(topic.Topics)) {
+                  topic.Topics.forEach((subTopic: DuckDuckGoRelatedTopic, subIndex: number) => {
+                    if (subTopic.Text && subTopic.FirstURL) {
+                      ddgResults.push({
+                        id: `ddg-topic-${index}-${subIndex}-${Date.now()}`,
+                        title: subTopic.Text.split(' - ')[0] || 'Related Topic',
+                        description: subTopic.Text || 'No description available',
+                        url: subTopic.FirstURL,
+                        imageUrl: subTopic.Icon?.URL || undefined,
+                        videoUrl: undefined,
+                        source: 'DuckDuckGo',
+                        publishedAt: new Date().toISOString()
+                      });
+                    }
+                  });
+                }
+                // Handle direct topics
+                else if ('Text' in topic && topic.Text && topic.FirstURL) {
+                  ddgResults.push({
+                    id: `ddg-topic-${index}-${Date.now()}`,
+                    title: topic.Text.split(' - ')[0] || 'Related Topic',
+                    description: topic.Text || 'No description available',
+                    url: topic.FirstURL,
+                    imageUrl: topic.Icon?.URL || undefined,
+                    videoUrl: undefined,
+                    source: 'DuckDuckGo',
+                    publishedAt: new Date().toISOString()
+                  });
+                }
+              });
+            }
+
+            // If we have DuckDuckGo results, use them
+            if (ddgResults.length > 0) {
+              results = ddgResults;
+            }
+          }
+        } catch (ddgError) {
+          console.warn('DuckDuckGo API fallback failed:', ddgError);
         }
 
-        const params = new URLSearchParams({
-          q: query,
-          apiKey: newsApiKey,
-          pageSize: '20',
-          language: 'en',
-          sortBy: 'relevancy'
-        });
+        // Final fallback to NewsAPI if DuckDuckGo didn't return results
+        if (results.length === 0) {
+          const newsApiKey = process.env.NEWSAPI_KEY;
+          
+          if (!newsApiKey) {
+            return NextResponse.json(
+              { error: 'No search API keys configured (Google Search, DuckDuckGo, or NewsAPI)' },
+              { status: 500 }
+            );
+          }
 
-        const response = await fetch(
-          `https://newsapi.org/v2/everything?${params.toString()}`
-        );
+          const params = new URLSearchParams({
+            q: query,
+            apiKey: newsApiKey,
+            pageSize: '20',
+            language: 'en',
+            sortBy: 'relevancy'
+          });
 
-        if (!response.ok) {
-          throw new Error(`NewsAPI fallback error: ${response.statusText}`);
+          const response = await fetch(
+            `https://newsapi.org/v2/everything?${params.toString()}`
+          );
+
+          if (!response.ok) {
+            throw new Error(`NewsAPI fallback error: ${response.statusText}`);
+          }
+
+          const data = await response.json();
+          
+          results = (data.articles || []).map((article: NewsAPIArticle, index: number) => ({
+            id: `web-fallback-${index}-${Date.now()}`,
+            title: article.title || 'No title',
+            description: article.description || 'No description available',
+            url: article.url,
+            imageUrl: article.urlToImage || undefined,
+            videoUrl: undefined,
+            source: article.source?.name || 'Unknown',
+            publishedAt: article.publishedAt || new Date().toISOString()
+          }));
         }
-
-        const data = await response.json();
-        
-        results = (data.articles || []).map((article: NewsAPIArticle, index: number) => ({
-          id: `web-fallback-${index}-${Date.now()}`,
-          title: article.title || 'No title',
-          description: article.description || 'No description available',
-          url: article.url,
-          imageUrl: article.urlToImage || undefined,
-          videoUrl: undefined,
-          source: article.source?.name || 'Unknown',
-          publishedAt: article.publishedAt || new Date().toISOString()
-        }));
       }
     }
     else {
