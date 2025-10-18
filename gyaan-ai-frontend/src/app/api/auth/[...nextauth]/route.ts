@@ -2,9 +2,10 @@ import NextAuth from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import GithubProvider from "next-auth/providers/github";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { FirestoreAdapter } from "@auth/firestore-adapter";
+import { FirestoreAdapter } from "@next-auth/firebase-adapter";
 import { initializeApp, getApps, cert } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
+import { db } from "@/lib/firebase";
 
 // Initialize Firebase Admin
 if (!getApps().length) {
@@ -70,6 +71,9 @@ const handler = NextAuth({
       }
       return session;
     },
+  },
+  session: {
+    strategy: "jwt",
   },
   secret: process.env.NEXTAUTH_SECRET,
 });
