@@ -1,31 +1,33 @@
 "use client";
+
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { doc, getDoc, setDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
 
 interface UserPreferences {
   topics: string[];
   sources: string[];
-  customAPIs: { name: string; endpoint: string; apiKey: string }[];
-  resultFormat: "article" | "report" | "summary";
+  customApiConnections: { name: string; endpoint: string; apiKey: string }[];
+  resultFormat: "detailed" | "summary" | "brief";
 }
 
 export default function PreferencesPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  
   const [preferences, setPreferences] = useState<UserPreferences>({
     topics: [],
     sources: [],
-    customAPIs: [],
-    resultFormat: "article",
+    customApiConnections: [],
+    resultFormat: "detailed",
   });
+  
   const [newTopic, setNewTopic] = useState("");
   const [newSource, setNewSource] = useState("");
   const [newAPI, setNewAPI] = useState({ name: "", endpoint: "", apiKey: "" });
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -34,17 +36,19 @@ export default function PreferencesPage() {
   }, [status, router]);
 
   useEffect(() => {
-    if (session?.user?.id) {
+    if (session?.user) {
       loadPreferences();
     }
   }, [session]);
 
   const loadPreferences = async () => {
     try {
-      const docRef = doc(db, "userPreferences", session!.user!.id);
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
-        setPreferences(docSnap.data() as UserPreferences);
+      const response = await fetch("/api/preferences");
+      if (response.ok) {
+        const data = await response.json();
+        setPreferences(data);
+      } else {
+        console.error("Failed to load preferences");
       }
     } catch (error) {
       console.error("Error loading preferences:", error);
@@ -53,13 +57,28 @@ export default function PreferencesPage() {
 
   const savePreferences = async () => {
     setLoading(true);
+    setError("");
+    setSuccess(false);
+    
     try {
-      const docRef = doc(db, "userPreferences", session!.user!.id);
-      await setDoc(docRef, preferences);
-      setSuccess(true);
-      setTimeout(() => setSuccess(false), 3000);
+      const response = await fetch("/api/preferences", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(preferences),
+      });
+
+      if (response.ok) {
+        setSuccess(true);
+        setTimeout(() => setSuccess(false), 3000);
+      } else {
+        const errorData = await response.json();
+        setError(errorData.error || "Failed to save preferences");
+      }
     } catch (error) {
       console.error("Error saving preferences:", error);
+      setError("An error occurred while saving preferences");
     } finally {
       setLoading(false);
     }
@@ -97,7 +116,7 @@ export default function PreferencesPage() {
     if (newAPI.name && newAPI.endpoint) {
       setPreferences({
         ...preferences,
-        customAPIs: [...preferences.customAPIs, newAPI],
+        customApiConnections: [...preferences.customApiConnections, newAPI],
       });
       setNewAPI({ name: "", endpoint: "", apiKey: "" });
     }
@@ -106,7 +125,7 @@ export default function PreferencesPage() {
   const removeCustomAPI = (index: number) => {
     setPreferences({
       ...preferences,
-      customAPIs: preferences.customAPIs.filter((_, i) => i !== index),
+      customApiConnections: preferences.customApiConnections.filter((_, i) => i !== index),
     });
   };
 
@@ -123,10 +142,16 @@ export default function PreferencesPage() {
       <div className="max-w-4xl mx-auto">
         <div className="bg-white rounded-lg shadow-md p-6">
           <h1 className="text-3xl font-bold text-gray-900 mb-6">Preferences</h1>
-
+          
           {success && (
             <div className="mb-6 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded">
               Preferences saved successfully!
+            </div>
+          )}
+          
+          {error && (
+            <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+              {error}
             </div>
           )}
 
@@ -204,7 +229,7 @@ export default function PreferencesPage() {
             </div>
           </div>
 
-          {/* Custom APIs Section */}
+          {/* Custom API Connections Section */}
           <div className="mb-8">
             <h2 className="text-xl font-semibold text-gray-800 mb-4">Custom API Connections</h2>
             <div className="space-y-3 mb-4">
@@ -237,8 +262,11 @@ export default function PreferencesPage() {
               </button>
             </div>
             <div className="space-y-2">
-              {preferences.customAPIs.map((api, index) => (
-                <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-md">
+              {preferences.customApiConnections.map((api, index) => (
+                <div
+                  key={index}
+                  className="flex justify-between items-center p-3 bg-gray-50 rounded-md"
+                >
                   <div>
                     <p className="font-medium text-gray-900">{api.name}</p>
                     <p className="text-sm text-gray-600">{api.endpoint}</p>
@@ -258,7 +286,7 @@ export default function PreferencesPage() {
           <div className="mb-8">
             <h2 className="text-xl font-semibold text-gray-800 mb-4">Default Result Format</h2>
             <div className="flex gap-4">
-              {["article", "report", "summary"].map((format) => (
+              {["detailed", "summary", "brief"].map((format) => (
                 <label key={format} className="flex items-center">
                   <input
                     type="radio"
