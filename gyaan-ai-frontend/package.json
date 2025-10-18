@@ -14,7 +14,11 @@
     "next": "14.2.0",
     "next-auth": "^4.24.5",
     "@next-auth/firebase-adapter": "1.0.3",
+<<<<<<< HEAD
     "firebase": "^9.23.0",
+=======
+    "firebase": "9.23.0",
+>>>>>>> da221d5 (Fix: resolve merge and update dependencies)
     "firebase-admin": "^12.0.0",
     "axios": "^1.6.2",
     "jspdf": "^2.5.1",
