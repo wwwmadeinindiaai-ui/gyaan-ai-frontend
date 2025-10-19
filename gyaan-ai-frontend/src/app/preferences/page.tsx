@@ -111,7 +111,7 @@ export default function PreferencesPage() {
       sources: preferences.sources.filter((s) => s !== source),
     });
   };
-
+  
   const addCustomAPI = () => {
     if (newAPI.name && newAPI.endpoint) {
       setPreferences({
