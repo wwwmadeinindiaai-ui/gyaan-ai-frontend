@@ -1,16 +1,27 @@
-import { getApps, initializeApp, cert } from "firebase-admin/app";
-import { getFirestore } from "firebase-admin/firestore";
+// server-only admin init
+import { getApps, initializeApp, cert, type ServiceAccount } from "firebase-admin/app";
+import { getFirestore, type Firestore as AdminFirestore } from "firebase-admin/firestore";
 
-export function getAdminDb() {
+let _db: AdminFirestore | null = null;
+
+export function getAdminDb(): AdminFirestore {
+  if (_db) return _db;
+
+  const projectId = process.env.FIREBASE_PROJECT_ID!;
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL!;
+  const privateKey = process.env.FIREBASE_PRIVATE_KEY!;
+
   const app =
     getApps()[0] ??
     initializeApp({
       credential: cert({
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
-      }),
+        projectId,
+        clientEmail,
+        // Vercel keeps \n escaped; turn them into real newlines:
+        privateKey: privateKey.replace(/\\n/g, "\n"),
+      } as ServiceAccount),
     });
 
-  return getFirestore(app);
+  _db = getFirestore(app);
+  return _db;
 }
