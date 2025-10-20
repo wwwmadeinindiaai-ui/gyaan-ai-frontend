@@ -1,9 +1,8 @@
-// src/app/api/auth/[...nextauth]/route.ts
-import NextAuth from "next-auth";
+import NextAuth, { type NextAuthOptions } from "next-auth";
 import { FirestoreAdapter } from "@next-auth/firebase-adapter";
 import GoogleProvider from "next-auth/providers/google";
 
-const handler = NextAuth({
+export const authOptions: NextAuthOptions = {
   adapter: FirestoreAdapter({
     apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY!,
     authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN!,
@@ -20,6 +19,8 @@ const handler = NextAuth({
     }),
   ],
   session: { strategy: "jwt" },
-});
+};
 
+// keep the handler for the App Router:
+const handler = NextAuth(authOptions);
 export { handler as GET, handler as POST };
