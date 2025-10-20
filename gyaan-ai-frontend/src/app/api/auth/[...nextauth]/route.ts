@@ -5,10 +5,10 @@ import GoogleProvider from "next-auth/providers/google";
 
 const handler = NextAuth({
   adapter: FirestoreAdapter({
-    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY!,       // client config
+    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY!,
     authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN!,
     projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID!,
-    // optional but nice to include if you have them:
+    // optional:
     appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
     storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
     messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_SENDER_ID,
