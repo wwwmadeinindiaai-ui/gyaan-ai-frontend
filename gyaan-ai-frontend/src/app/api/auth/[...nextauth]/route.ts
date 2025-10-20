@@ -1,14 +1,23 @@
+// src/app/api/auth/[...nextauth]/route.ts
 import NextAuth from "next-auth";
 import { FirestoreAdapter } from "@next-auth/firebase-adapter";
-import { getAdminDb } from "@/lib/firebase-admin";
-import type { Firestore as AdminFirestore } from "firebase-admin/firestore";
-
-const adminDb: AdminFirestore = getAdminDb();
+import GoogleProvider from "next-auth/providers/google";
 
 const handler = NextAuth({
-  adapter: FirestoreAdapter(adminDb),
+  adapter: FirestoreAdapter({
+    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY!,       // client config
+    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN!,
+    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID!,
+    // optional but nice to include if you have them:
+    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_SENDER_ID,
+  }),
   providers: [
-    // your auth providers here
+    GoogleProvider({
+      clientId: process.env.GOOGLE_ID!,
+      clientSecret: process.env.GOOGLE_SECRET!,
+    }),
   ],
   session: { strategy: "jwt" },
 });
