@@ -1,6 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+// Timeout helper
+function withTimeout(ms: number) {
+  const c = new AbortController();
+  const t = setTimeout(() => c.abort(), ms);
+  return { signal: c.signal, done: () => clearTimeout(t) };
+}
+
+// Host extraction helper
+const hostOf = (u: string) => {
+  try {
+    return new URL(u).hostname;
+  } catch {
+    return "unknown";
+  }
+};
 
 // Define the structure for search results
 interface SearchResult {
@@ -63,7 +80,13 @@ export async function GET(request: NextRequest) {
     if (!query) {
       return NextResponse.json(
         { error: 'Query parameter is required' },
-        { status: 400 }
+        { 
+          status: 400,
+          headers: {
+            'Cache-Control': 'no-store, must-revalidate',
+            'CDN-Cache-Control': 'no-store, must-revalidate'
+          }
+        }
       );
     }
 
@@ -76,7 +99,13 @@ export async function GET(request: NextRequest) {
       if (!newsApiKey) {
         return NextResponse.json(
           { error: 'NewsAPI key is not configured' },
-          { status: 500 }
+          { 
+            status: 500,
+            headers: {
+              'Cache-Control': 'no-store, must-revalidate',
+              'CDN-Cache-Control': 'no-store, must-revalidate'
+            }
+          }
         );
       }
 
@@ -99,7 +128,12 @@ export async function GET(request: NextRequest) {
         params.append('sortBy', 'relevancy');
       }
 
-      const response = await fetch(`${endpoint}?${params.toString()}`);
+      const t = withTimeout(10000);
+      const response = await fetch(`${endpoint}?${params.toString()}`, {
+        signal: t.signal,
+        cache: "no-store"
+      });
+      t.done();
       
       if (!response.ok) {
         throw new Error(`NewsAPI error: ${response.statusText}`);
@@ -132,9 +166,15 @@ export async function GET(request: NextRequest) {
           num: '10'
         });
 
+        const t = withTimeout(10000);
         const response = await fetch(
-          `https://www.googleapis.com/customsearch/v1?${params.toString()}`
+          `https://www.googleapis.com/customsearch/v1?${params.toString()}`,
+          {
+            signal: t.signal,
+            cache: "no-store"
+          }
         );
+        t.done();
 
         if (!response.ok) {
           throw new Error(`Google Search API error: ${response.statusText}`);
@@ -154,7 +194,7 @@ export async function GET(request: NextRequest) {
             url: item.link,
             imageUrl: imageUrl || undefined,
             videoUrl: videoUrl || undefined,
-            source: new URL(item.link).hostname,
+            source: hostOf(item.link),
             publishedAt: new Date().toISOString()
           };
         });
@@ -162,9 +202,15 @@ export async function GET(request: NextRequest) {
       // Try DuckDuckGo Instant Answer API as fallback
       else {
         try {
+          const t = withTimeout(10000);
           const ddgResponse = await fetch(
-            `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&skip_disambig=1`
+            `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&skip_disambig=1`,
+            {
+              signal: t.signal,
+              cache: "no-store"
+            }
           );
+          t.done();
 
           if (ddgResponse.ok) {
             const ddgData = await ddgResponse.json();
@@ -236,7 +282,13 @@ export async function GET(request: NextRequest) {
           if (!newsApiKey) {
             return NextResponse.json(
               { error: 'No search API keys configured (Google Search, DuckDuckGo, or NewsAPI)' },
-              { status: 500 }
+              { 
+                status: 500,
+                headers: {
+                  'Cache-Control': 'no-store, must-revalidate',
+                  'CDN-Cache-Control': 'no-store, must-revalidate'
+                }
+              }
             );
           }
 
@@ -248,9 +300,15 @@ export async function GET(request: NextRequest) {
             sortBy: 'relevancy'
           });
 
+          const t = withTimeout(10000);
           const response = await fetch(
-            `https://newsapi.org/v2/everything?${params.toString()}`
+            `https://newsapi.org/v2/everything?${params.toString()}`,
+            {
+              signal: t.signal,
+              cache: "no-store"
+            }
           );
+          t.done();
 
           if (!response.ok) {
             throw new Error(`NewsAPI fallback error: ${response.statusText}`);
@@ -274,16 +332,36 @@ export async function GET(request: NextRequest) {
     else {
       return NextResponse.json(
         { error: 'Invalid mode. Use "news", "trending", or "web"' },
-        { status: 400 }
+        { 
+          status: 400,
+          headers: {
+            'Cache-Control': 'no-store, must-revalidate',
+            'CDN-Cache-Control': 'no-store, must-revalidate'
+          }
+        }
       );
     }
 
-    return NextResponse.json({ results });
+    return NextResponse.json(
+      { results },
+      {
+        headers: {
+          'Cache-Control': 'no-store, must-revalidate',
+          'CDN-Cache-Control': 'no-store, must-revalidate'
+        }
+      }
+    );
   } catch (error) {
     console.error('Search API error:', error);
     return NextResponse.json(
       { error: 'Internal server error', message: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 }
+      { 
+        status: 500,
+        headers: {
+          'Cache-Control': 'no-store, must-revalidate',
+          'CDN-Cache-Control': 'no-store, must-revalidate'
+        }
+      }
     );
   }
 }
