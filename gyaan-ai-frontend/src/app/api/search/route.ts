@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+export const dynamic = "force-dynamic";
+
 // Define the structure for search results
 interface SearchResult {
   id: string;
@@ -54,8 +56,8 @@ interface DuckDuckGoRelatedTopic {
 
 export async function GET(request: NextRequest) {
   try {
-    const searchParams = request.nextUrl.searchParams;
-    const query = searchParams.get('query');
+    const searchParams = new URL(request.url).searchParams;
+    const query = searchParams.get('q') || "";
     const mode = searchParams.get('mode') || 'web';
 
     if (!query) {
