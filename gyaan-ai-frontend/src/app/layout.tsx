@@ -3,7 +3,7 @@ import { Inter } from "next/font/google"; // Use Google, not local, for Inter
 import "./globals.css";
 import AuthProvider from './components/auth-provider';
 import { getServerSession } from 'next-auth';
-import { authOptions } from './api/auth/[...nextauth]/route';
+import { authOptions } from '@/lib/auth';
 
 const inter = Inter({
   variable: "--font-inter", // Recommended variable naming format
