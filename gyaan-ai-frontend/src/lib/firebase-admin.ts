@@ -1,27 +1,32 @@
-// server-only admin init
-import { getApps, initializeApp, cert, type ServiceAccount } from "firebase-admin/app";
-import { getFirestore, type Firestore as AdminFirestore } from "firebase-admin/firestore";
+import * as admin from 'firebase-admin';
 
-let _db: AdminFirestore | null = null;
+let adminDb: admin.firestore.Firestore | null = null;
 
-export function getAdminDb(): AdminFirestore {
-  if (_db) return _db;
+function initializeFirebaseAdmin() {
+  if (!admin.apps.length) {
+    const projectId = process.env.FIREBASE_PROJECT_ID;
+    const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+    const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
 
-  const projectId = process.env.FIREBASE_PROJECT_ID!;
-  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL!;
-  const privateKey = process.env.FIREBASE_PRIVATE_KEY!;
+    if (!projectId || !clientEmail || !privateKey) {
+      throw new Error('Missing Firebase Admin credentials');
+    }
 
-  const app =
-    getApps()[0] ??
-    initializeApp({
-      credential: cert({
+    admin.initializeApp({
+      credential: admin.credential.cert({
         projectId,
         clientEmail,
-        // Vercel keeps \n escaped; turn them into real newlines:
-        privateKey: privateKey.replace(/\\n/g, "\n"),
-      } as ServiceAccount),
+        privateKey,
+      }),
     });
+  }
 
-  _db = getFirestore(app);
-  return _db;
+  return admin.firestore();
+}
+
+export function getAdminDb(): admin.firestore.Firestore {
+  if (!adminDb) {
+    adminDb = initializeFirebaseAdmin();
+  }
+  return adminDb;
 }
