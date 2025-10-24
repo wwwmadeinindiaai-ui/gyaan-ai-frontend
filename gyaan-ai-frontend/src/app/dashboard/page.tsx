@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
-import { getSearchHistory, saveSearchHistory, clearSearchHistory as clearFirestoreHistory } from '@/lib/firestore-helpers';
-
+import { SearchHistory, getSearchHistory, saveSearchHistory, clearSearchHistory as clearFirestoreHistory } from '@/lib/firestore-helpers';
 // Define types
 interface SearchResult {
   id: string;
@@ -14,11 +13,6 @@ interface SearchResult {
   relevanceScore?: number;
 }
 
-interface SearchHistory {
-  query: string;
-  timestamp: string;
-  results: SearchResult[];
-}
 
 export default function Dashboard() {
   const [query, setQuery] = useState('');
@@ -77,8 +71,8 @@ export default function Dashboard() {
           title: result.title || `Result ${index + 1}`,
           content: result.content || '',
           source: result.source || 'Unknown',
-          timestamp: new Date().toISOString(),
-          relevanceScore: result.relevanceScore || Math.random() * 100,
+        timestamp: new Date()
+                 ,          relevanceScore: result.relevanceScore || Math.random() * 100,
         }));
 
         setCurrentResults(formattedResults);
@@ -86,8 +80,8 @@ export default function Dashboard() {
         // Add to search history
         const newHistoryItem: SearchHistory = {
           query: query.trim(),
-          timestamp: new Date().toISOString(),
-          results: formattedResults,
+      timestamp: new Date()
+               ,          results: formattedResults,
         };
         
         setSearchHistory(prev => [newHistoryItem, ...prev.slice(0, 9)]); // Keep last 1
