@@ -80,12 +80,10 @@ export default function Dashboard() {
         // Add to search history
         const newHistoryItem: SearchHistory = {
           query: query.trim(),
-      timestamp: new Date()
-               ,          results: formattedResults,
-        };
-             userId: session?.user?.email || '',
-        
-        setSearchHistory(prev => [newHistoryItem, ...prev.slice(0, 9)]); // Keep last 1
+      timestamp: new Date(),
+               userId: session?.user?.email || '',
+                     esults: formattedResults,
+        };        setSearchHistory(prev => [newHistoryItem, ...prev.slice(0, 9)]); // Keep last 1
        
                    // Save to Firestore
         if (session?.user?.email) {
