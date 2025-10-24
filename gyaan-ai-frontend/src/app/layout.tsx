@@ -26,7 +26,7 @@ export default async function RootLayout({
     <html lang="en">
       <body className={`${inter.variable} antialiased`}>
         <AuthProvider session={session}
-                    <Navigation />>
+                    <Navigation />
           {children}
         </AuthProvider>
       </body>
