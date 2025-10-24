@@ -1,4 +1,5 @@
 // Main landing page component
+import Link from 'next/link';
 export default function Home() {
   return (
     <div className="min-h-screen flex flex-col">
@@ -9,9 +10,11 @@ export default function Home() {
           <p className="text-xl text-gray-600 mb-8">
             Your intelligent search and query platform
           </p>
-          <button className="bg-blue-600 text-white px-8 py-3 rounded-lg text-lg hover:bg-blue-700">
+          <Link href="/dashboard">
+              <button className="bg-blue-600 text-white px-8 py-3 rounded-lg text-lg hover:bg-blue-700">
             Get Started
           </button>
+            </Link>
         </section>
       </main>
       
