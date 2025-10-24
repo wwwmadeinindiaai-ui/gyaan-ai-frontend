@@ -1,24 +1,28 @@
-import { db } from './firebase';
-import { 
-  collection, 
-  doc, 
-  setDoc, 
-  getDoc, 
-  getDocs, 
-  query, 
-  where, 
-  orderBy, 
-  limit, 
+import { db } from "./firebase";
+import {
+  collection,
+  doc,
+  setDoc,
+  getDoc,
+  getDocs,
+  query,
+  where,
+  orderBy,
+  limit as limitFn,
   deleteDoc,
   Timestamp,
-  addDoc 
-} from 'firebase/firestore';
+  addDoc,
+  type FirestoreDataConverter,
+  type QueryDocumentSnapshot,
+  type SnapshotOptions,
+} from "firebase/firestore";
 
 export interface SearchHistory {
   id?: string;
   userId: string;
   query: string;
-  timestamp: Date;  results?: any;
+  timestamp: Date;            // always a JS Date in app code
+  results?: any;              // you can tighten this type later
   filters?: {
     source: string;
     sortBy: string;
@@ -27,48 +31,52 @@ export interface SearchHistory {
 
 /**
  * Firestore data converter for SearchHistory
- * Ensures timestamp is always a Date object, never Timestamp
+ * Ensures timestamp is always a Date (in app code) and stored as Timestamp in Firestore.
  */
-export const searchHistoryConverter = {
-  toFirestore: (history: SearchHistory) => ({
-    query: history.query,
-    timestamp: history.timestamp instanceof Date 
-      ? Timestamp.fromDate(history.timestamp) 
-      : history.timestamp,
-    userId: history.userId,
-    results: history.results,
-  }),
-  fromFirestore: (snapshot: any): SearchHistory => {
-    const data = snapshot.data();
+export const searchHistoryConverter: FirestoreDataConverter<SearchHistory> = {
+  toFirestore(history: SearchHistory) {
     return {
-      query: data.query,
-      timestamp: data.timestamp instanceof Timestamp 
-        ? data.timestamp.toDate() 
-        : data.timestamp,
+      userId: history.userId,
+      query: history.query,
+      results: history.results ?? null,
+      filters: history.filters ?? null,
+      timestamp:
+        history.timestamp instanceof Date
+          ? Timestamp.fromDate(history.timestamp)
+          : history.timestamp, // tolerate pre-converted Timestamp
+    };
+  },
+  fromFirestore(snapshot: QueryDocumentSnapshot, options: SnapshotOptions): SearchHistory {
+    const data = snapshot.data(options) as any;
+    return {
+      id: snapshot.id,
       userId: data.userId,
-      results: data.results,
+      query: data.query,
+      results: data.results ?? null,
+      filters: data.filters ?? null,
+      timestamp: data.timestamp instanceof Timestamp ? data.timestamp.toDate() : new Date(data.timestamp),
     };
   },
 };
 
-const SEARCH_HISTORY_COLLECTION = 'searchHistory';
+const SEARCH_HISTORY_COLLECTION = "searchHistory";
 
 /**
  * Save a search to user's search history in Firestore
  */
 export async function saveSearchHistory(
   userId: string,
-  searchData: Omit<SearchHistory, 'id' | 'userId' | 'timestamp'>
+  searchData: Omit<SearchHistory, "id" | "userId" | "timestamp">
 ): Promise<void> {
   try {
-    const searchHistoryRef = collection(db, SEARCH_HISTORY_COLLECTION).withConverter(searchHistoryConverter));
+    const searchHistoryRef = collection(db, SEARCH_HISTORY_COLLECTION).withConverter(searchHistoryConverter);
     await addDoc(searchHistoryRef, {
       userId,
       ...searchData,
-      timestamp: Timestamp.now(),
+      timestamp: new Date(), // converter will store as Firestore Timestamp
     });
   } catch (error) {
-    console.error('Error saving search history:', error);
+    console.error("Error saving search history:", error);
     throw error;
   }
 }
@@ -76,36 +84,15 @@ export async function saveSearchHistory(
 /**
  * Get user's search history from Firestore
  */
-export async function getSearchHistory(
-  userId: string,
-  limitCount: number = 10
-): Promise<SearchHistory[]> {
+export async function getSearchHistory(userId: string, limitCount: number = 10): Promise<SearchHistory[]> {
   try {
-    const searchHistoryRef = collection(db, SEARCH_HISTORY_COLLECTION).withConverter(searchHistoryConverter));
-    const q = query(
-      searchHistoryRef,
-      where('userId', '==', userId),
-      orderBy('timestamp', 'desc'),
-      limit(limitCount)
-    );
+    const searchHistoryRef = collection(db, SEARCH_HISTORY_COLLECTION).withConverter(searchHistoryConverter);
+    const q = query(searchHistoryRef, where("userId", "==", userId), orderBy("timestamp", "desc"), limitFn(limitCount));
 
     const querySnapshot = await getDocs(q);
-    const history: SearchHistory[] = [];
-
-    querySnapshot.forEach((doc) => {
-      const data = doc.data();
-      history.push({
-        id: doc.id,
-        userId: data.userId,
-        query: data.query,
-      timestamp: data.timestamp,        results: data.results,
-        filters: data.filters,
-      });
-    });
-
-    return history;
+    return querySnapshot.docs.map((d) => d.data());
   } catch (error) {
-    console.error('Error fetching search history:', error);
+    console.error("Error fetching search history:", error);
     throw error;
   }
 }
@@ -115,14 +102,14 @@ export async function getSearchHistory(
  */
 export async function clearSearchHistory(userId: string): Promise<void> {
   try {
-    const searchHistoryRef = collection(db, SEARCH_HISTORY_COLLECTION);
-    const q = query(searchHistoryRef, where('userId', '==', userId));
+    const searchHistoryRef = collection(db, SEARCH_HISTORY_COLLECTION); // converter not needed for deletes
+    const q = query(searchHistoryRef, where("userId", "==", userId));
     const querySnapshot = await getDocs(q);
 
-    const deletePromises = querySnapshot.docs.map((doc) => deleteDoc(doc.ref));
+    const deletePromises = querySnapshot.docs.map((d) => deleteDoc(d.ref));
     await Promise.all(deletePromises);
   } catch (error) {
-    console.error('Error clearing search history:', error);
+    console.error("Error clearing search history:", error);
     throw error;
   }
 }
@@ -135,7 +122,7 @@ export async function deleteSearchHistoryItem(searchId: string): Promise<void> {
     const searchDocRef = doc(db, SEARCH_HISTORY_COLLECTION, searchId);
     await deleteDoc(searchDocRef);
   } catch (error) {
-    console.error('Error deleting search history item:', error);
+    console.error("Error deleting search history item:", error);
     throw error;
   }
 }
@@ -148,20 +135,10 @@ export async function getSearchHistoryItem(searchId: string): Promise<SearchHist
     const searchDocRef = doc(db, SEARCH_HISTORY_COLLECTION, searchId).withConverter(searchHistoryConverter);
     const docSnap = await getDoc(searchDocRef);
 
-    if (docSnap.exists()) {
-      const data = docSnap.data();
-      return {
-        id: docSnap.id,
-        userId: data.userId,
-        query: data.query,
-      timestamp: data.timestamp,        results: data.results,
-        filters: data.filters,
-      };
-    }
-
-    return null;
+    if (!docSnap.exists()) return null;
+    return docSnap.data(); // already typed & has id via converter
   } catch (error) {
-    console.error('Error fetching search history item:', error);
+    console.error("Error fetching search history item:", error);
     throw error;
   }
 }
