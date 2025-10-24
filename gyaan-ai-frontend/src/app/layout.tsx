@@ -4,8 +4,7 @@ import "./globals.css";
 import AuthProvider from './components/auth-provider';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth'
-  import Navigation from './components/Navigation;;
-
+  import Navigation from './components/Navigation';
 const inter = Inter({
   variable: "--font-inter", // Recommended variable naming format
   subsets: ["latin"],
