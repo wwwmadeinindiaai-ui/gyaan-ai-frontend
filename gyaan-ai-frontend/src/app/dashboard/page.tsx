@@ -1,6 +1,8 @@
  'use client';
 
 import { useState, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
+import { getSearchHistory, saveSearchHistory, clearSearchHistory as clearFirestoreHistory } from '@/lib/firestore-helpers';
 
 // Define types
 interface SearchResult {
@@ -20,30 +22,28 @@ interface SearchHistory {
 
 export default function Dashboard() {
   const [query, setQuery] = useState('');
+   const { data: session } = useSession();
   const [searchHistory, setSearchHistory] = useState<SearchHistory[]>([]);
   const [currentResults, setCurrentResults] = useState<SearchResult[] | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'academic' | 'news' | 'web'>('all');
   const [sortBy, setSortBy] = useState<'relevance' | 'date'>('relevance');
 
-  // Load search history from localStorage on mount
+  // Load search history from Firestore on mount
   useEffect(() => {
-    const saved = localStorage.getItem('searchHistory');
-    if (saved) {
-      try {
-        setSearchHistory(JSON.parse(saved));
-      } catch (e) {
-        console.error('Failed to load search history:', e);
+    const loadSearchHistory = async () => {
+      if (session?.user?.email) {
+        try {
+          const history = await getSearchHistory(session.user.email, 10);
+          setSearchHistory(history);
+        } catch (error) {
+          console.error('Failed to load search history:', error);
+        }
       }
-    }
-  }, []);
+    };
 
-  // Save search history to localStorage whenever it changes
-  useEffect(() => {
-    if (searchHistory.length > 0) {
-      localStorage.setItem('searchHistory', JSON.stringify(searchHistory));
-    }
-  }, [searchHistory]);
+    loadSearchHistory();
+  }, [session]);
 
   async function handleSearch() {
     if (!query.trim()) return;
@@ -90,7 +90,23 @@ export default function Dashboard() {
           results: formattedResults,
         };
         
-        setSearchHistory(prev => [newHistoryItem, ...prev.slice(0, 9)]); // Keep last 10
+        setSearchHistory(prev => [newHistoryItem, ...prev.slice(0, 9)]); // Keep last 1
+       
+                   // Save to Firestore
+        if (session?.user?.email) {
+          try {
+            await saveSearchHistory(session.user.email, {
+              query: query.trim(),
+              results: formattedResults,
+              filters: {
+                source: selectedFilter,
+                sortBy: sortBy
+              }
+            });
+          } catch (error) {
+            console.error('Failed to save search to Firestore:', error);
+          }
+        }0
       } else {
         throw new Error(data.error || 'Search failed');
       }
