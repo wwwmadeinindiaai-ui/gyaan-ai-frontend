@@ -61,7 +61,7 @@ export async function saveSearchHistory(
   searchData: Omit<SearchHistory, 'id' | 'userId' | 'timestamp'>
 ): Promise<void> {
   try {
-    const searchHistoryRef = collection(db, SEARCH_HISTORY_COLLECTION.withConverter(searchHistoryConverter));
+    const searchHistoryRef = collection(db, SEARCH_HISTORY_COLLECTION).withConverter(searchHistoryConverter));
     await addDoc(searchHistoryRef, {
       userId,
       ...searchData,
@@ -81,7 +81,7 @@ export async function getSearchHistory(
   limitCount: number = 10
 ): Promise<SearchHistory[]> {
   try {
-    const searchHistoryRef = collection(db, SEARCH_HISTORY_COLLECTION.withConverter(searchHistoryConverter));
+    const searchHistoryRef = collection(db, SEARCH_HISTORY_COLLECTION).withConverter(searchHistoryConverter));
     const q = query(
       searchHistoryRef,
       where('userId', '==', userId),
