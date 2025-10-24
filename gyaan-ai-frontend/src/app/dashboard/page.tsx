@@ -8,14 +8,13 @@ export default function Dashboard() {
   const [searchResult, setSearchResult] = useState<string | null>(null);
   const [isSearching, setIsSearching] = useState(false);
 
-  const handleSearch = async () => {
+  async function handleSearch() {
     if (!query.trim()) return;
     
     setIsSearching(true);
     setSearchResult(null);
     
     try {
-      // Call the AI search API
       const response = await fetch('/api/ai-search', {
         method: 'POST',
         headers: {
@@ -35,13 +34,12 @@ export default function Dashboard() {
       const data = await response.json();
       
       if (data.success) {
-        // Format the results for display
         const resultsText = data.results.map((result: any, index: number) => 
           `${index + 1}. ${result.title}\n${result.content}\n`
         ).join('\n');
         
         setSearchResult(resultsText);
-        setSearches(prev => [query.trim(), ...prev.slice(0, 4)]); // Keep last 5 searches
+        setSearches(prev => [query.trim(), ...prev.slice(0, 4)]);
       } else {
         setSearchResult(`Error: ${data.error || 'Search failed'}`);
       }
@@ -51,7 +49,7 @@ export default function Dashboard() {
     } finally {
       setIsSearching(false);
     }
-  };
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-8">
