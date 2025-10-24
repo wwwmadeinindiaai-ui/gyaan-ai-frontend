@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 // Define the structure for AI search requests
 interface AISearchRequest {
@@ -36,195 +37,200 @@ interface AISearchResponse {
   error?: string;
 }
 
-// Simulate AI search (replace with your actual AI service)
-async function performAISearch(request: AISearchRequest): Promise<AISearchResult[]> {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, Math.random() * 1000 + 500));
-  
-  const { query, model = 'gpt-3.5-turbo', maxResults = 5, searchType = 'general' } = request;
-  
-  // Simulate different results based on query
-  const mockResults: AISearchResult[] = [
-    {
-      id: `result-1-${Date.now()}`,
-      title: `AI Analysis: ${query}`,
-      content: `This is a comprehensive AI-generated analysis about "${query}". The search leveraged ${model} to provide contextual insights and relevant information. This result demonstrates the power of intelligent search capabilities.`,
-      source: 'AI Knowledge Base',
-      relevanceScore: 0.95,
-      timestamp: new Date().toISOString(),
-      metadata: {
-        author: 'Gyaan AI',
-        publishedDate: new Date().toISOString(),
-        domain: 'ai.gyaan.com',
-        tags: ['AI', 'Analysis', 'Search']
-      }
-    },
-    {
-      id: `result-2-${Date.now()}`,
-      title: `Deep Dive into ${query}`,
-      content: `An in-depth exploration of ${query} using advanced AI models. This search result provides detailed insights, practical applications, and current trends related to your query.`,
-      source: 'Research Database',
-      relevanceScore: 0.87,
-      timestamp: new Date().toISOString(),
-      metadata: {
-        author: 'Research Team',
-        publishedDate: new Date(Date.now() - 86400000).toISOString(),
-        domain: 'research.gyaan.com',
-        tags: ['Research', 'Deep Learning', query.split(' ')[0]]
-      }
-    },
-    {
-      id: `result-3-${Date.now()}`,
-      title: `Latest Updates on ${query}`,
-      content: `Recent developments and news about ${query}. Stay informed with the latest breakthroughs, industry insights, and emerging trends in this field.`,
-      source: 'News Aggregator',
-      relevanceScore: 0.79,
-      timestamp: new Date().toISOString(),
-      metadata: {
-        author: 'News Bot',
-        publishedDate: new Date(Date.now() - 3600000).toISOString(),
-        domain: 'news.gyaan.com',
-        tags: ['News', 'Updates', 'Trends']
-      }
-    }
-  ];
-  
-  return mockResults.slice(0, maxResults);
-}
+// Initialize Gemini AI
+const genAI = process.env.GEMINI_API_KEY 
+  ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
+  : null;
 
-// Generate search suggestions based on query
-function generateSuggestions(query: string): string[] {
-  const commonSuggestions = [
-    `${query} tutorial`,
-    `${query} examples`,
-    `${query} best practices`,
-    `${query} vs alternatives`,
-    `how to ${query}`
-  ];
-  
-  return commonSuggestions.slice(0, 3);
-}
-
-// POST endpoint for AI search
-export async function POST(request: NextRequest) {
+// Real AI search function using Gemini API
+async function performAISearch(request: AISearchRequest): Promise<AISearchResponse> {
   const startTime = Date.now();
-  
+  const { query, model = 'gemini', maxResults = 5, searchType = 'general' } = request;
+
+  if (!genAI || !process.env.GEMINI_API_KEY) {
+    throw new Error('Gemini API key is not configured. Please add GEMINI_API_KEY to your environment variables.');
+  }
+
   try {
-    // Check authentication (optional - remove if you want public access)
+    // Initialize Gemini Pro model
+    const geminiModel = genAI.getGenerativeModel({ model: 'gemini-pro' });
+
+    // Create a comprehensive prompt for search results
+    const prompt = `You are an AI-powered search assistant. Generate ${maxResults} comprehensive and relevant search results for the following query.
+
+Query: "${query}"
+Search Type: ${searchType}
+
+For each result, provide:
+1. A descriptive title
+2. Detailed content/summary (100-150 words)
+3. A credible source name
+4. Relevance score (0-1)
+5. Current timestamp
+6. Metadata including author (if applicable), publication date, domain, and relevant tags
+
+Format your response as a JSON array of objects with this structure:
+[
+  {
+    "title": "Result title",
+    "content": "Detailed content...",
+    "source": "Source name",
+    "relevanceScore": 0.95,
+    "metadata": {
+      "author": "Author name",
+      "publishedDate": "2025-10-24",
+      "domain": "example.com",
+      "tags": ["tag1", "tag2"]
+    }
+  }
+]
+
+Ensure the results are factual, diverse, and highly relevant to the query.`;
+
+    // Call Gemini API
+    const result = await geminiModel.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
+
+    // Parse the AI response
+    let results: AISearchResult[];
+    try {
+      // Extract JSON from the response (Gemini might wrap it in markdown code blocks)
+      const jsonMatch = text.match(/\[\s*\{[\s\S]*\}\s*\]/);
+      if (jsonMatch) {
+        const parsedResults = JSON.parse(jsonMatch[0]);
+        results = parsedResults.map((r: any, index: number) => ({
+          id: `result-${index + 1}-${Date.now()}`,
+          title: r.title || `Result ${index + 1}`,
+          content: r.content || '',
+          source: r.source || 'AI Knowledge Base',
+          relevanceScore: r.relevanceScore || 0.8,
+          timestamp: new Date().toISOString(),
+          metadata: r.metadata || {
+            author: 'Gyaan AI',
+            publishedDate: new Date().toISOString().split('T')[0],
+            domain: 'ai.gyaan.com',
+            tags: [searchType, 'AI-generated']
+          }
+        }));
+      } else {
+        // Fallback: Create a single result from the AI response
+        results = [{
+          id: `result-1-${Date.now()}`,
+          title: `AI Analysis: ${query}`,
+          content: text.substring(0, 500) + '...',
+          source: 'Gemini AI',
+          relevanceScore: 0.9,
+          timestamp: new Date().toISOString(),
+          metadata: {
+            author: 'Gyaan AI',
+            publishedDate: new Date().toISOString().split('T')[0],
+            domain: 'ai.gyaan.com',
+            tags: [searchType, 'AI-generated']
+          }
+        }];
+      }
+    } catch (parseError) {
+      console.error('Error parsing AI response:', parseError);
+      // Create a result from the raw response
+      results = [{
+        id: `result-1-${Date.now()}`,
+        title: `AI Response: ${query}`,
+        content: text.substring(0, 500),
+        source: 'Gemini AI',
+        relevanceScore: 0.85,
+        timestamp: new Date().toISOString(),
+        metadata: {
+          author: 'Gyaan AI',
+          publishedDate: new Date().toISOString().split('T')[0],
+          domain: 'ai.gyaan.com',
+          tags: [searchType]
+        }
+      }];
+    }
+
+    const processingTime = Date.now() - startTime;
+
+    return {
+      success: true,
+      query,
+      model: 'gemini-pro',
+      totalResults: results.length,
+      processingTime,
+      results,
+      suggestions: [`Related: ${query}`, `More about ${query}`, `Latest on ${query}`]
+    };
+  } catch (error: any) {
+    console.error('Gemini AI Error:', error);
+    const processingTime = Date.now() - startTime;
+    
+    return {
+      success: false,
+      query,
+      model: 'gemini-pro',
+      totalResults: 0,
+      processingTime,
+      results: [],
+      error: error.message || 'Failed to perform AI search'
+    };
+  }
+}
+
+// POST handler for AI search
+export async function POST(request: NextRequest) {
+  try {
+    // Check authentication
     const session = await getServerSession();
+    
     if (!session) {
       return NextResponse.json(
-        { 
-          success: false, 
-          error: 'Authentication required',
-          message: 'Please sign in to use AI search'
-        },
+        { success: false, error: 'Unauthorized - Please sign in' },
         { status: 401 }
       );
     }
 
     // Parse request body
-    const body = await request.json();
-    const { query, model, maxResults, searchType }: AISearchRequest = body;
-
-    // Validate required fields
-    if (!query || query.trim().length === 0) {
+    const body: AISearchRequest = await request.json();
+    
+    // Validate query
+    if (!body.query || typeof body.query !== 'string') {
       return NextResponse.json(
-        {
-          success: false,
-          error: 'Invalid query',
-          message: 'Search query is required and cannot be empty'
-        },
-        { status: 400 }
-      );
-    }
-
-    // Validate query length
-    if (query.length > 1000) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Query too long',
-          message: 'Search query must be less than 1000 characters'
-        },
+        { success: false, error: 'Invalid query parameter' },
         { status: 400 }
       );
     }
 
     // Perform AI search
-    const results = await performAISearch({ 
-      query: query.trim(), 
-      model, 
-      maxResults, 
-      searchType 
-    });
-    
-    // Generate suggestions
-    const suggestions = generateSuggestions(query.trim());
-    
-    // Calculate processing time
-    const processingTime = Date.now() - startTime;
-    
-    // Prepare response
-    const response: AISearchResponse = {
-      success: true,
-      query: query.trim(),
-      model: model || 'gpt-3.5-turbo',
-      totalResults: results.length,
-      processingTime,
-      results,
-      suggestions
-    };
+    const searchResults = await performAISearch(body);
 
-    return NextResponse.json(response, {
-      status: 200,
-      headers: {
-        'Cache-Control': 'no-store, must-revalidate',
-        'CDN-Cache-Control': 'no-store, must-revalidate'
-      }
-    });
-
-  } catch (error) {
-    console.error('AI Search API error:', error);
-    
-    const processingTime = Date.now() - startTime;
-    
+    return NextResponse.json(searchResults);
+  } catch (error: any) {
+    console.error('API Error:', error);
     return NextResponse.json(
-      {
-        success: false,
-        error: 'Internal server error',
-        message: error instanceof Error ? error.message : 'Unknown error occurred',
-        processingTime
-      },
       { 
-        status: 500,
-        headers: {
-          'Cache-Control': 'no-store, must-revalidate',
-          'CDN-Cache-Control': 'no-store, must-revalidate'
-        }
-      }
+        success: false, 
+        error: 'Internal server error',
+        message: error.message 
+      },
+      { status: 500 }
     );
   }
 }
 
-// GET endpoint for health check
+// GET handler for health check
 export async function GET() {
-  return NextResponse.json(
-    {
-      success: true,
-      message: 'AI Search API is running',
-      timestamp: new Date().toISOString(),
-      version: '1.0.0',
-      endpoints: {
-        search: 'POST /api/ai-search',
-        health: 'GET /api/ai-search'
-      }
-    },
-    { 
-      status: 200,
-      headers: {
-        'Cache-Control': 'no-store, must-revalidate'
-      }
+  const isConfigured = !!process.env.GEMINI_API_KEY;
+  
+  return NextResponse.json({
+    success: true,
+    message: 'AI Search API is running',
+    timestamp: new Date().toISOString(),
+    version: '2.0.0',
+    aiProvider: 'Google Gemini',
+    configured: isConfigured,
+    endpoints: {
+      search: 'POST /api/ai-search',
+      health: 'GET /api/ai-search'
     }
-  );
+  });
 }
