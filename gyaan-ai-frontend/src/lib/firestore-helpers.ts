@@ -18,13 +18,38 @@ export interface SearchHistory {
   id?: string;
   userId: string;
   query: string;
-  timestamp: Date | Timestamp;
-  results?: any;
+  timestamp: Date;  results?: any;
   filters?: {
     source: string;
     sortBy: string;
   };
 }
+
+/**
+ * Firestore data converter for SearchHistory
+ * Ensures timestamp is always a Date object, never Timestamp
+ */
+export const searchHistoryConverter = {
+  toFirestore: (history: SearchHistory) => ({
+    query: history.query,
+    timestamp: history.timestamp instanceof Date 
+      ? Timestamp.fromDate(history.timestamp) 
+      : history.timestamp,
+    userId: history.userId,
+    results: history.results,
+  }),
+  fromFirestore: (snapshot: any): SearchHistory => {
+    const data = snapshot.data();
+    return {
+      query: data.query,
+      timestamp: data.timestamp instanceof Timestamp 
+        ? data.timestamp.toDate() 
+        : data.timestamp,
+      userId: data.userId,
+      results: data.results,
+    };
+  },
+};
 
 const SEARCH_HISTORY_COLLECTION = 'searchHistory';
 
@@ -36,7 +61,7 @@ export async function saveSearchHistory(
   searchData: Omit<SearchHistory, 'id' | 'userId' | 'timestamp'>
 ): Promise<void> {
   try {
-    const searchHistoryRef = collection(db, SEARCH_HISTORY_COLLECTION);
+    const searchHistoryRef = collection(db, SEARCH_HISTORY_COLLECTION.withConverter(searchHistoryConverter));
     await addDoc(searchHistoryRef, {
       userId,
       ...searchData,
@@ -56,7 +81,7 @@ export async function getSearchHistory(
   limitCount: number = 10
 ): Promise<SearchHistory[]> {
   try {
-    const searchHistoryRef = collection(db, SEARCH_HISTORY_COLLECTION);
+    const searchHistoryRef = collection(db, SEARCH_HISTORY_COLLECTION.withConverter(searchHistoryConverter));
     const q = query(
       searchHistoryRef,
       where('userId', '==', userId),
@@ -73,8 +98,7 @@ export async function getSearchHistory(
         id: doc.id,
         userId: data.userId,
         query: data.query,
-        timestamp: data.timestamp.toDate(),
-        results: data.results,
+      timestamp: data.timestamp,        results: data.results,
         filters: data.filters,
       });
     });
@@ -121,7 +145,7 @@ export async function deleteSearchHistoryItem(searchId: string): Promise<void> {
  */
 export async function getSearchHistoryItem(searchId: string): Promise<SearchHistory | null> {
   try {
-    const searchDocRef = doc(db, SEARCH_HISTORY_COLLECTION, searchId);
+    const searchDocRef = doc(db, SEARCH_HISTORY_COLLECTION, searchI.withConverter(searchHistoryConverter)d);
     const docSnap = await getDoc(searchDocRef);
 
     if (docSnap.exists()) {
@@ -130,8 +154,7 @@ export async function getSearchHistoryItem(searchId: string): Promise<SearchHist
         id: docSnap.id,
         userId: data.userId,
         query: data.query,
-        timestamp: data.timestamp.toDate(),
-        results: data.results,
+      timestamp: data.timestamp,        results: data.results,
         filters: data.filters,
       };
     }
