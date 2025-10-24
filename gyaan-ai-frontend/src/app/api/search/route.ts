@@ -71,6 +71,26 @@ interface DuckDuckGoRelatedTopic {
   };
 }
 
+// Unsplash photo type
+interface UnsplashPhoto {
+    id: string;
+    description: string | null;
+    alt_description: string | null;
+    urls: {
+          regular: string;
+          small: string;
+          thumb: string;
+        };
+    user: {
+          name: string;
+          username: string;
+        };
+    links: {
+          html: string;
+        };
+    created_at: string;
+  }
+
 export async function GET(request: NextRequest) {
   try {
     const searchParams = new URL(request.url).searchParams;
@@ -331,8 +351,60 @@ export async function GET(request: NextRequest) {
     }
     else {
       return NextResponse.json(
-        { error: 'Invalid mode. Use "news", "trending", or "web"' },
-        { 
+        { error: 'Invalid mode. Use "news", "trending", "web", or "images"' },        { 
+            // Handle images mode with Unsplash
+            else if (mode === 'images') {
+                  const unsplashAccessKey = process, or "images"UNSPLASH_ACCESS_KEY;
+
+                  if (!unsplashAccessKey) {
+                          return NextResponse.json(
+                                    { error: 'Unsplash API key is not configured' },
+                                    {
+                                                status: 500,
+                                                headers: {
+                                                              'Cache-Control': 'no-store, must-revalidate',
+                                                              'CDN-Cache-Control': 'no-store, must-revalidate'
+                                                                          }
+                                                          }
+                                  );
+                        }
+
+                  const params = new URLSearchParams({
+                          query: query,
+                          per_page: '20',
+                          orientation: 'landscape'
+                                });
+
+                  const t = withTimeout(10000);
+                  const response = await fetch(
+                          `https://api.unsplash.com/search/photos?${params.toString()}`,
+                          {
+                                    headers: {
+                                                'Authorization': `Client-ID ${unsplashAccessKey}`
+                                                          },
+                                    signal: t.signal,
+                                    cache: "no-store"
+                                            }
+                        );
+                  t.done();
+
+                  if (!response.ok) {
+                          throw new Error(`Unsplash API error: ${response.statusText}`);
+                        }
+
+                  const data = await response.json();
+
+                  results = (data.results || []).map((photo: UnsplashPhoto, index: number) => ({
+                          id: `image-${index}-${Date.now()}`,
+                          title: photo.description || photo.alt_description || 'Untitled',
+                          description: `Photo by ${photo.user.name} on Unsplash`,
+                          url: photo.links.html,
+                          imageUrl: photo.urls.regular,
+                          videoUrl: undefined,
+                          source: `Unsplash/@${photo.user.username}`,
+                          publishedAt: photo.created_at
+                                }));
+                }
           status: 400,
           headers: {
             'Cache-Control': 'no-store, must-revalidate',
