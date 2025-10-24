@@ -82,7 +82,7 @@ export default function Dashboard() {
           query: query.trim(),
       timestamp: new Date(),
                userId: session?.user?.email || '',
-                     esults: formattedResults,
+                    results: formattedResults,
         };        setSearchHistory(prev => [newHistoryItem, ...prev.slice(0, 9)]); // Keep last 1
        
                    // Save to Firestore
