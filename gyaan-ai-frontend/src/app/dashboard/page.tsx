@@ -83,6 +83,7 @@ export default function Dashboard() {
       timestamp: new Date()
                ,          results: formattedResults,
         };
+             userId: session?.user?.email || '',
         
         setSearchHistory(prev => [newHistoryItem, ...prev.slice(0, 9)]); // Keep last 1
        
