@@ -53,7 +53,7 @@ async function performAISearch(request: AISearchRequest): Promise<AISearchRespon
 
   try {
     // Initialize Gemini Pro model
-    const geminiModel = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const geminiModel = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
 
     // Create a comprehensive prompt for search results
     const prompt = `You are an AI-powered search assistant. Generate ${maxResults} comprehensive and relevant search results for the following query.
