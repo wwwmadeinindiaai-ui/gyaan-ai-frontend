@@ -145,7 +145,7 @@ export async function deleteSearchHistoryItem(searchId: string): Promise<void> {
  */
 export async function getSearchHistoryItem(searchId: string): Promise<SearchHistory | null> {
   try {
-    const searchDocRef = doc(db, SEARCH_HISTORY_COLLECTION, searchI.withConverter(searchHistoryConverter)d);
+    const searchDocRef = doc(db, SEARCH_HISTORY_COLLECTION, searchId).withConverter(searchHistoryConverter);
     const docSnap = await getDoc(searchDocRef);
 
     if (docSnap.exists()) {
