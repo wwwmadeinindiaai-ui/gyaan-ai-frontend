@@ -50,4 +50,5 @@ export default function Dashboard() {
       setSearchResult(`Error: ${error instanceof Error ? error.message : 'Network error occurred'}`);
     } finally {
       setIsSearching(false);
+    }
   };
