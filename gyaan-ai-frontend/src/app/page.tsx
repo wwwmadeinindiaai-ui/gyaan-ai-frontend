@@ -2,18 +2,6 @@
 export default function Home() {
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="bg-blue-600 text-white p-6">
-        <div className="container mx-auto">
-          <h1 className="text-3xl font-bold">Gyaan AI</h1>
-          <nav className="mt-4">
-            <a href="/signup" className="mr-4 hover:underline">Sign Up</a>
-            <a href="/dashboard" className="mr-4 hover:underline">Dashboard</a>
-            <a href="/pricing" className="mr-4 hover:underline">Pricing</a>
-            <a href="/about" className="mr-4 hover:underline">About</a>
-            <a href="/contact" className="hover:underline">Contact</a>
-          </nav>
-        </div>
-      </header>
       
       <main className="flex-grow container mx-auto p-6">
         <section className="text-center py-20">
