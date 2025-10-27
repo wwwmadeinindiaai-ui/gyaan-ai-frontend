@@ -1,9 +1,6 @@
 'use client';
-
 import { useState, FormEvent } from 'react';
-
-type SearchMode = 'trending' | 'news' | 'web';
-
+type SearchMode = 'trending' | 'news' | 'web' | 'images';
 interface SearchResult {
   id: string;
   title: string;
@@ -14,38 +11,31 @@ interface SearchResult {
   source: string;
   publishedAt: string;
 }
-
 export default function SearchPage() {
   const [query, setQuery] = useState('');
   const [mode, setMode] = useState<SearchMode>('web');
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     
-    if (!query.trim() && mode !== 'trending') {
+    if (!query.trim() && mode !== 'trending' && mode !== 'images') {
       setError('Please enter a search query');
       return;
     }
-
     setLoading(true);
     setError(null);
     setResults([]);
-
     try {
       const params = new URLSearchParams();
       if (query) params.append('query', query);
       params.append('mode', mode);
-
       const response = await fetch(`/api/search?${params.toString()}`);
       const data = await response.json();
-
       if (!response.ok) {
         throw new Error(data.error || 'Search failed');
       }
-
       setResults(data.results || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
@@ -53,7 +43,6 @@ export default function SearchPage() {
       setLoading(false);
     }
   };
-
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -61,13 +50,11 @@ export default function SearchPage() {
     const diffMins = Math.floor(diffMs / 60000);
     const diffHours = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);
-
     if (diffMins < 60) return `${diffMins}m ago`;
     if (diffHours < 24) return `${diffHours}h ago`;
     if (diffDays < 7) return `${diffDays}d ago`;
     return date.toLocaleDateString();
   };
-
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
       {/* Header */}
@@ -85,15 +72,14 @@ export default function SearchPage() {
           </div>
         </div>
       </header>
-
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Search Form */}
-        <form onSubmit={handleSubmit} className="mb-8">
+        <form className="mb-8" onSubmit={handleSubmit}>
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 border border-gray-200 dark:border-gray-700">
             {/* Search Modes */}
             <div className="flex flex-wrap gap-2 mb-4">
-              {(['web', 'news', 'trending'] as SearchMode[]).map((m) => (
+              {(['web', 'news', 'trending', 'images'] as SearchMode[]).map((m) => (
                 <button
                   key={m}
                   type="button"
@@ -108,7 +94,6 @@ export default function SearchPage() {
                 </button>
               ))}
             </div>
-
             {/* Search Input */}
             <div className="flex gap-3">
               <input
@@ -118,6 +103,8 @@ export default function SearchPage() {
                 placeholder={
                   mode === 'trending'
                     ? 'Press search for trending topics...'
+                    : mode === 'images'
+                    ? 'Search for images...'
                     : 'What would you like to search?'
                 }
                 className="flex-1 px-6 py-4 text-lg border-2 border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition-all"
@@ -146,7 +133,7 @@ export default function SearchPage() {
                         d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                       />
                     </svg>
-                    <span>Searching...</span>
+                    Searching...
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">
@@ -163,14 +150,13 @@ export default function SearchPage() {
                         d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
                       />
                     </svg>
-                    <span>Search</span>
+                    Search
                   </div>
                 )}
               </button>
             </div>
           </div>
         </form>
-
         {/* Error Message */}
         {error && (
           <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/30 border-l-4 border-red-500 rounded-lg">
@@ -192,7 +178,6 @@ export default function SearchPage() {
             </div>
           </div>
         )}
-
         {/* Loading State */}
         {loading && (
           <div className="flex flex-col items-center justify-center py-20">
@@ -203,10 +188,9 @@ export default function SearchPage() {
             <p className="mt-4 text-gray-600 dark:text-gray-400 font-medium">Searching...</p>
           </div>
         )}
-
         {/* Results Grid */}
         {!loading && results.length > 0 && (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <div className={mode === 'images' ? 'grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4' : 'grid gap-6 md:grid-cols-2 lg:grid-cols-3'}>
             {results.map((result) => (
               <article
                 key={result.id}
@@ -232,7 +216,6 @@ export default function SearchPage() {
                     />
                   </div>
                 )}
-
                 {/* Content */}
                 <div className="p-4">
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 line-clamp-2">
@@ -257,7 +240,6 @@ export default function SearchPage() {
             ))}
           </div>
         )}
-
         {/* No Results */}
         {!loading && !error && results.length === 0 && query && (
           <div className="text-center py-12">
