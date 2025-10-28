@@ -27,6 +27,7 @@ export interface SearchHistory {
     source: string;
     sortBy: string;
   };
+  mode?: string;
 }
 
 /**
@@ -40,6 +41,7 @@ export const searchHistoryConverter: FirestoreDataConverter<SearchHistory> = {
       query: history.query,
       results: history.results ?? null,
       filters: history.filters ?? null,
+      mode: history.mode ?? null,
       timestamp:
         history.timestamp instanceof Date
           ? Timestamp.fromDate(history.timestamp)
@@ -54,6 +56,7 @@ export const searchHistoryConverter: FirestoreDataConverter<SearchHistory> = {
       query: data.query,
       results: data.results ?? null,
       filters: data.filters ?? null,
+      mode: data.mode ?? null,
       timestamp: data.timestamp instanceof Timestamp ? data.timestamp.toDate() : new Date(data.timestamp),
     };
   },
@@ -66,7 +69,7 @@ const SEARCH_HISTORY_COLLECTION = "searchHistory";
  */
 export async function saveSearchHistory(
   userId: string,
-  searchData: Omit<SearchHistory, "id" | "userId" | "timestamp">
+  searchData: Omit<SearchHistory, "id" | "userId">
 ): Promise<void> {
   try {
     const searchHistoryRef = collection(db, SEARCH_HISTORY_COLLECTION).withConverter(searchHistoryConverter);
@@ -88,7 +91,6 @@ export async function getSearchHistory(userId: string, limitCount: number = 10):
   try {
     const searchHistoryRef = collection(db, SEARCH_HISTORY_COLLECTION).withConverter(searchHistoryConverter);
     const q = query(searchHistoryRef, where("userId", "==", userId), orderBy("timestamp", "desc"), limitFn(limitCount));
-
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map((d) => d.data());
   } catch (error) {
@@ -105,7 +107,6 @@ export async function clearSearchHistory(userId: string): Promise<void> {
     const searchHistoryRef = collection(db, SEARCH_HISTORY_COLLECTION); // converter not needed for deletes
     const q = query(searchHistoryRef, where("userId", "==", userId));
     const querySnapshot = await getDocs(q);
-
     const deletePromises = querySnapshot.docs.map((d) => deleteDoc(d.ref));
     await Promise.all(deletePromises);
   } catch (error) {
@@ -134,7 +135,6 @@ export async function getSearchHistoryItem(searchId: string): Promise<SearchHist
   try {
     const searchDocRef = doc(db, SEARCH_HISTORY_COLLECTION, searchId).withConverter(searchHistoryConverter);
     const docSnap = await getDoc(searchDocRef);
-
     if (!docSnap.exists()) return null;
     return docSnap.data(); // already typed & has id via converter
   } catch (error) {
