@@ -1,5 +1,4 @@
 "use client";
-
 import Link from 'next/link';
 import { useSession, signIn, signOut } from 'next-auth/react';
 
@@ -24,6 +23,9 @@ export default function NavBar() {
             </Link>
             {status === "loading" ? null : session ? (
               <>
+                <Link href="/dashboard" className="text-gray-600 hover:text-gray-900">
+                  Dashboard
+                </Link>
                 <span className="text-sm text-gray-700">
                   {session.user?.email}
                 </span>
