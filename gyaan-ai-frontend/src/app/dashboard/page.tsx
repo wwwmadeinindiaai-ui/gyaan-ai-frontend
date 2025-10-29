@@ -65,7 +65,6 @@ export default function Dashboard() {
         session.user.email,
         {
           query: query,
-          filters: selectedFilter,
           results: mockResults,
           mode: selectedFilter
         }
