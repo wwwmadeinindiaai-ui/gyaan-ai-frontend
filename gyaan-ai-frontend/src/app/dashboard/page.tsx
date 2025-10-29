@@ -63,9 +63,12 @@ export default function Dashboard() {
       // Save to Firestore
       await saveSearchHistory(
         session.user.email,
-        query,
-        selectedFilter,
-        mockResults
+        {
+          query: query,
+          filters: selectedFilter,
+          results: mockResults,
+          mode: selectedFilter
+        }
       );
 
       // Refresh search history
@@ -101,9 +104,10 @@ export default function Dashboard() {
 
   // Rendering helpers for media
   const renderImage = (result: SearchResult) => {
-    // Fix: Ensure non-empty src for all <img>
+    // Fix: Ensure non-empty src for all 
     const src = result.imageUrl && result.imageUrl.trim() !== '' ? result.imageUrl : undefined;
     if (!src) return null; // Do not render broken images
+
     return (
       <div className="mt-2">
         <img
@@ -129,10 +133,12 @@ export default function Dashboard() {
 
   const renderVideo = (result: SearchResult) => {
     if (selectedFilter !== 'videos') return null;
+
     const url = result.videoUrl && result.videoUrl.trim() !== '' ? result.videoUrl : undefined;
     if (!url) {
       return <p className="text-sm text-gray-500 mt-2">No video available for this result.</p>;
     }
+
     if (isYouTubeUrl(url)) {
       const embed = youTubeEmbedSrc(url);
       if (!embed) {
@@ -152,6 +158,7 @@ export default function Dashboard() {
         </div>
       );
     }
+
     // Generic video player for direct video URLs
     return (
       <div className="mt-3 w-full max-w-2xl">
