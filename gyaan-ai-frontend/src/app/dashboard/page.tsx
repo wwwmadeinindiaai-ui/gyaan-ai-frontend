@@ -39,6 +39,45 @@ export default function Dashboard() {
     load();
   }, [session?.user?.email]);
 
+  // Handle search function
+  const handleSearch = async () => {
+    if (!query.trim() || !session?.user?.email) return;
+    
+    setIsSearching(true);
+    try {
+      // Mock search results - replace with actual API call
+      const mockResults: SearchResult[] = [
+        {
+          id: Date.now().toString(),
+          title: `Result for "${query}"`,
+          content: 'This is a sample search result. Replace this with actual search API integration.',
+          source: 'Sample Source',
+          timestamp: new Date().toISOString(),
+          relevanceScore: 95,
+        },
+      ];
+
+      // Update current results
+      setCurrentResults(mockResults);
+
+      // Save to Firestore
+      await saveSearchHistory(
+        session.user.email,
+        query,
+        selectedFilter,
+        mockResults
+      );
+
+      // Refresh search history
+      const updatedHistory = await getSearchHistory(session.user.email);
+      setSearchHistory(updatedHistory);
+    } catch (error) {
+      console.error('Search error:', error);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
   // Helpers
   const isYouTubeUrl = (url?: string) =>
     !!url && /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\//i.test(url);
@@ -158,7 +197,6 @@ export default function Dashboard() {
                     </span>
                   )}
                 </div>
-
                 {/* Media sections */}
                 {renderImage(result)}
                 {renderVideo(result)}
@@ -167,6 +205,28 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+
+      {/* Search Input Section */}
+      <div className="bg-white rounded-xl shadow-lg p-6">
+        <h2 className="text-2xl font-semibold text-gray-700 mb-4">Search</h2>
+        <div className="mb-4 flex items-center gap-2">
+          <input
+            type="text"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            onKeyPress={e => e.key === 'Enter' && handleSearch()}
+            placeholder="Type your search..."
+            className="p-2 border rounded w-full"
+          />
+          <button
+            onClick={handleSearch}
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+            disabled={isSearching || !query.trim()}
+          >
+            {isSearching ? 'Searching...' : 'Search'}
+          </button>
+        </div>
+      </div>
 
       {/* History */}
       <div className="bg-white rounded-xl shadow-lg p-6">
