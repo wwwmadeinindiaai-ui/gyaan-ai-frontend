@@ -40,8 +40,8 @@ export default function Dashboard() {
   }, [session?.user?.email]);
 
   // Handle search function
-  const handleSearch = async () => {
-    if (!query.trim() || !session?.user?.email) return;
+  const handleSearch = async (userEmail: string, searchQuery: string) => {
+    if (!searchQuery.trim() || !userEmail) return;
     
     setIsSearching(true);
     try {
@@ -49,7 +49,7 @@ export default function Dashboard() {
       const mockResults: SearchResult[] = [
         {
           id: Date.now().toString(),
-          title: `Result for "${query}"`,
+          title: `Result for "${searchQuery}"`,
           content: 'This is a sample search result. Replace this with actual search API integration.',
           source: 'Sample Source',
           timestamp: new Date().toISOString(),
@@ -62,16 +62,16 @@ export default function Dashboard() {
 
       // Save to Firestore
       await saveSearchHistory(
-        session.user.email,
+        userEmail,
         {
-          query: query,
+          query: searchQuery,
           results: mockResults,
           mode: selectedFilter
         }
       );
 
       // Refresh search history
-      const updatedHistory = await getSearchHistory(session.user.email);
+      const updatedHistory = await getSearchHistory(userEmail);
       setSearchHistory(updatedHistory);
     } catch (error) {
       console.error('Search error:', error);
@@ -103,7 +103,7 @@ export default function Dashboard() {
 
   // Rendering helpers for media
   const renderImage = (result: SearchResult) => {
-    // Fix: Ensure non-empty src for all 
+    // Fix: Ensure non-empty src for all <img>
     const src = result.imageUrl && result.imageUrl.trim() !== '' ? result.imageUrl : undefined;
     if (!src) return null; // Do not render broken images
 
@@ -220,12 +220,12 @@ export default function Dashboard() {
             type="text"
             value={query}
             onChange={e => setQuery(e.target.value)}
-            onKeyPress={e => e.key === 'Enter' && handleSearch()}
+            onKeyPress={e => e.key === 'Enter' && session?.user?.email && handleSearch(session.user.email, query)}
             placeholder="Type your search..."
             className="p-2 border rounded w-full"
           />
           <button
-            onClick={handleSearch}
+            onClick={() => session?.user?.email && handleSearch(session.user.email, query)}
             className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
             disabled={isSearching || !query.trim()}
           >
