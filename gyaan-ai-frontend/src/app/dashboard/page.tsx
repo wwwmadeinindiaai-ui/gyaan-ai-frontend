@@ -29,11 +29,7 @@ export default function Dashboard() {
   const [isSearching, setIsSearching] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState<SearchMode>('all');
   const [sortBy, setSortBy] = useState<'relevance' | 'date'>('relevance');
-  async function handleSearch() {
-  // ...full implementation
 }
-
-
 
   // Load search history
   useEffect(() => {
