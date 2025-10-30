@@ -2,7 +2,6 @@
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { SearchHistory, getSearchHistory, saveSearchHistory } from '@/lib/firestore-helpers';
-
 // Types
 interface BaseResult {
   id: string;
@@ -16,10 +15,8 @@ interface BaseResult {
   imageAuthorName?: string;
   imageAuthorUrl?: string;
 }
-
 type SearchMode = 'all' | 'academic' | 'news' | 'web' | 'images' | 'videos';
 type SearchResult = BaseResult;
-
 export default function Dashboard() {
   const { data: session } = useSession();
   const [query, setQuery] = useState('');
@@ -28,7 +25,6 @@ export default function Dashboard() {
   const [isSearching, setIsSearching] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState<SearchMode>('all');
   const [sortBy, setSortBy] = useState<'relevance' | 'date'>('relevance');
-
   // Load search history
   useEffect(() => {
     const load = async () => {
@@ -42,12 +38,10 @@ export default function Dashboard() {
     };
     load();
   }, [session]);
-
   async function handleSearch() {
     if (!query.trim()) return;
     setIsSearching(true);
     setCurrentResults(null);
-
     try {
       // Map UI filter to backend params
       const body: any = {
@@ -55,7 +49,6 @@ export default function Dashboard() {
         model: 'gpt-3.5-turbo',
         maxResults: 10,
       };
-
       if (selectedFilter === 'images') {
         body.mode = 'images';
       } else if (selectedFilter === 'videos') {
@@ -65,22 +58,17 @@ export default function Dashboard() {
       } else {
         body.mode = selectedFilter;
       }
-
-      const response = await fetch('/api/ai-search', {
+      const response = await fetch('/api/search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-
       if (!response.ok) throw new Error(`API error: ${response.status}`);
-
       const data = await response.json();
       const rawResults: any[] = data?.results || [];
-
       const normalized = (selectedFilter === 'videos')
         ? rawResults.filter(r => !!r.videoUrl)
         : rawResults;
-
       const formatted: SearchResult[] = normalized.map((r: any, index: number) => ({
         id: r.id || `result-${Date.now()}-${index}`,
         title: r.title || `Result ${index + 1}`,
@@ -93,9 +81,7 @@ export default function Dashboard() {
         imageAuthorName: r.imageAuthorName,
         imageAuthorUrl: r.imageAuthorUrl,
       }));
-
       setCurrentResults(formatted);
-
       // Save history
       if (session?.user?.email) {
         try {
@@ -115,7 +101,6 @@ export default function Dashboard() {
       setIsSearching(false);
     }
   }
-
   // Filter and sort results for display order only
   const getFilteredResults = () => {
     if (!currentResults) return [] as SearchResult[];
@@ -127,13 +112,11 @@ export default function Dashboard() {
     }
     return out;
   };
-
   function loadHistoryItem(item: SearchHistory) {
     setQuery(item.query);
     setCurrentResults(item.results);
     if (item.filters?.source) setSelectedFilter(item.filters.source as SearchMode);
   }
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-8">
       <div className="max-w-7xl mx-auto space-y-8">
@@ -142,7 +125,6 @@ export default function Dashboard() {
           <h1 className="text-4xl font-bold text-gray-800 mb-2">🔍 AI-Powered Search Dashboard</h1>
           <p className="text-gray-600">Discover insights across multiple sources with advanced filters</p>
         </div>
-
         {/* Search Bar */}
         <div className="bg-white rounded-xl shadow-lg p-6">
           <div className="flex gap-4 mb-4">
@@ -162,7 +144,6 @@ export default function Dashboard() {
               {isSearching ? '🔄 Searching...' : '🔍 Search'}
             </button>
           </div>
-
           {/* Filters */}
           <div className="flex flex-wrap gap-3">
             {(['all', 'web', 'academic', 'news', 'images', 'videos'] as SearchMode[]).map((mode) => (
@@ -179,7 +160,6 @@ export default function Dashboard() {
               </button>
             ))}
           </div>
-
           {/* Sort Options */}
           <div className="mt-4 flex gap-3 items-center">
             <span className="text-gray-700 font-medium">Sort by:</span>
@@ -201,7 +181,6 @@ export default function Dashboard() {
             </button>
           </div>
         </div>
-
         {/* Results */}
         <div className="bg-white rounded-xl shadow-lg p-6">
           <h2 className="text-2xl font-semibold text-gray-700 mb-4">Search Results</h2>
@@ -264,7 +243,6 @@ export default function Dashboard() {
             <p className="text-gray-500 text-center py-8">Enter a query and click Search to see results here.</p>
           )}
         </div>
-
         {/* History */}
         <div className="bg-white rounded-xl shadow-lg p-6">
           <div className="flex justify-between items-center mb-4">
