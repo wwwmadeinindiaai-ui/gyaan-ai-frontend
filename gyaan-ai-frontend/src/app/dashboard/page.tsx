@@ -40,45 +40,54 @@ export default function Dashboard() {
   }, [session?.user?.email]);
 
   // Handle search function
-  const handleSearch = async (userEmail: string, searchQuery: string) => {
-    if (!searchQuery.trim() || !userEmail) return;
+  async function handleSearch() {
+    if (!query.trim() || !session?.user?.email) return;
     
     setIsSearching(true);
     try {
-      // Mock search results - replace with actual API call
-      const mockResults: SearchResult[] = [
-        {
-          id: Date.now().toString(),
-          title: `Result for "${searchQuery}"`,
-          content: 'This is a sample search result. Replace this with actual search API integration.',
-          source: 'Sample Source',
-          timestamp: new Date().toISOString(),
-          relevanceScore: 95,
-        },
-      ];
+      // Build the real backend request
+      const payload: any = {
+        query: query,
+        mode: selectedFilter,
+        // Add additional fields as needed by backend
+      };
+
+      const response = await fetch('/api/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Search API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const results: SearchResult[] = data.results || [];
 
       // Update current results
-      setCurrentResults(mockResults);
+      setCurrentResults(results);
 
       // Save to Firestore
       await saveSearchHistory(
-        userEmail,
+        session.user.email,
         {
-          query: searchQuery,
-          results: mockResults,
+          query: query,
+          results: results,
           mode: selectedFilter
         }
       );
 
       // Refresh search history
-      const updatedHistory = await getSearchHistory(userEmail);
+      const updatedHistory = await getSearchHistory(session.user.email);
       setSearchHistory(updatedHistory);
     } catch (error) {
       console.error('Search error:', error);
+      alert('Search failed. Please try again.');
     } finally {
       setIsSearching(false);
     }
-  };
+  }
 
   // Helpers
   const isYouTubeUrl = (url?: string) =>
@@ -118,7 +127,7 @@ export default function Dashboard() {
         {(result.imageAuthorName || result.imageAuthorUrl) && (
           <p className="text-xs text-gray-500 mt-1">
             Image credit: {result.imageAuthorUrl ? (
-              <a className="underline" href={result.imageAuthorUrl} target="_blank" rel="noreferrer">
+              <a href={result.imageAuthorUrl} target="_blank" rel="noreferrer" className="underline">
                 {result.imageAuthorName || result.imageAuthorUrl}
               </a>
             ) : (
@@ -181,6 +190,75 @@ export default function Dashboard() {
 
   return (
     <div className="max-w-6xl mx-auto p-4 space-y-6">
+      {/* Search Input Section */}
+      <div className="bg-white rounded-xl shadow-lg p-6">
+        <h2 className="text-2xl font-semibold text-gray-700 mb-4">Search</h2>
+        <div className="mb-4 flex items-center gap-2">
+          <input
+            type="text"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            onKeyPress={e => e.key === 'Enter' && handleSearch()}
+            placeholder="Type your search..."
+            className="p-2 border rounded w-full"
+          />
+          <button
+            onClick={handleSearch}
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+            disabled={isSearching || !query.trim()}
+          >
+            {isSearching ? 'Searching...' : 'Search'}
+          </button>
+        </div>
+
+        {/* Mode Selector */}
+        <div className="mb-4">
+          <p className="text-sm text-gray-600 mb-2">Search Mode:</p>
+          <div className="flex flex-wrap gap-2">
+            {(['all', 'academic', 'news', 'web', 'images', 'videos'] as SearchMode[]).map(mode => (
+              <button
+                key={mode}
+                onClick={() => setSelectedFilter(mode)}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  selectedFilter === mode
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {mode.charAt(0).toUpperCase() + mode.slice(1)}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Sort Options */}
+        <div>
+          <p className="text-sm text-gray-600 mb-2">Sort By:</p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setSortBy('relevance')}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                sortBy === 'relevance'
+                  ? 'bg-green-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Relevance
+            </button>
+            <button
+              onClick={() => setSortBy('date')}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                sortBy === 'date'
+                  ? 'bg-green-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Date
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* Results */}
       {currentResults && (
         <div className="bg-white rounded-xl shadow-lg p-6">
@@ -203,6 +281,7 @@ export default function Dashboard() {
                     </span>
                   )}
                 </div>
+
                 {/* Media sections */}
                 {renderImage(result)}
                 {renderVideo(result)}
@@ -211,28 +290,6 @@ export default function Dashboard() {
           </div>
         </div>
       )}
-
-      {/* Search Input Section */}
-      <div className="bg-white rounded-xl shadow-lg p-6">
-        <h2 className="text-2xl font-semibold text-gray-700 mb-4">Search</h2>
-        <div className="mb-4 flex items-center gap-2">
-          <input
-            type="text"
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            onKeyPress={e => e.key === 'Enter' && session?.user?.email && handleSearch(session.user.email, query)}
-            placeholder="Type your search..."
-            className="p-2 border rounded w-full"
-          />
-          <button
-            onClick={() => session?.user?.email && handleSearch(session.user.email, query)}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-            disabled={isSearching || !query.trim()}
-          >
-            {isSearching ? 'Searching...' : 'Search'}
-          </button>
-        </div>
-      </div>
 
       {/* History */}
       <div className="bg-white rounded-xl shadow-lg p-6">
@@ -247,6 +304,7 @@ export default function Dashboard() {
             </button>
           )}
         </div>
+
         {searchHistory.length > 0 ? (
           <div className="space-y-3">
             {searchHistory.map((item, index) => (
