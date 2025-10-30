@@ -106,7 +106,7 @@ export default function Dashboard() {
         try {
           await saveSearchHistory(session.user.email, {
             query: q,
-            filter: selectedFilter,
+            mode: selectedFilter,
             results: results,
           });
         } catch (e) {
@@ -243,13 +243,13 @@ export default function Dashboard() {
                   <div>
                     <p className="font-medium text-gray-900">{item.query}</p>
                     <p className="text-sm text-gray-500">
-                      {item.filter} · {new Date(item.timestamp).toLocaleDateString()}
+                      {item.mode} · {new Date(item.timestamp).toLocaleDateString()}
                     </p>
                   </div>
                   <button
                     onClick={() => {
                       setQuery(item.query);
-                      setSelectedFilter(item.filter);
+                      setSelectedFilter(item.mode as SearchMode);
                     }}
                     className="text-blue-600 hover:text-blue-800 text-sm font-medium"
                   >
