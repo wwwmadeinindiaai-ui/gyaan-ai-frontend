@@ -29,7 +29,6 @@ export default function Dashboard() {
   const [isSearching, setIsSearching] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState<SearchMode>('all');
   const [sortBy, setSortBy] = useState<'relevance' | 'date'>('relevance');
-}
 
   // Load search history
   useEffect(() => {
@@ -60,12 +59,11 @@ export default function Dashboard() {
       if (selectedFilter === 'images') {
         body.mode = 'images';
       } else if (selectedFilter === 'videos') {
-        // videos come from regular web results; filter client-side
         body.mode = 'web';
       } else if (selectedFilter === 'all') {
         body.mode = 'all';
       } else {
-        body.mode = selectedFilter; // academic | news | web
+        body.mode = selectedFilter;
       }
 
       const response = await fetch('/api/ai-search', {
@@ -77,8 +75,6 @@ export default function Dashboard() {
       const data = await response.json();
 
       const rawResults: any[] = data?.results || [];
-
-      // For videos, keep only those with videoUrl
       const normalized = (selectedFilter === 'videos')
         ? rawResults.filter(r => !!r.videoUrl)
         : rawResults;
