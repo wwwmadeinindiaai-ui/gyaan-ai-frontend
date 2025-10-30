@@ -1,12 +1,9 @@
 'use client';
-
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { SearchHistory, getSearchHistory, saveSearchHistory } from '@/lib/firestore-helpers';
-
 // NOTE: For Images mode to work, ensure UNSPLASH_ACCESS_KEY is set in your .env file
 // Example: UNSPLASH_ACCESS_KEY=your_actual_key_here
-
 // Types
 interface BaseResult {
   id: string;
@@ -20,10 +17,8 @@ interface BaseResult {
   imageAuthorName?: string;
   imageAuthorUrl?: string;
 }
-
 type SearchMode = 'all' | 'academic' | 'news' | 'web' | 'images' | 'videos' | 'trending';
 type SearchResult = BaseResult;
-
 export default function Dashboard() {
   const { data: session } = useSession();
   const [query, setQuery] = useState('');
@@ -33,7 +28,6 @@ export default function Dashboard() {
   const [selectedFilter, setSelectedFilter] = useState<SearchMode>('all');
   const [sortBy, setSortBy] = useState<'relevance' | 'date'>('relevance');
   const [warning, setWarning] = useState<string | null>(null);
-
   // Load search history
   useEffect(() => {
     const load = async () => {
@@ -47,7 +41,6 @@ export default function Dashboard() {
     };
     load();
   }, [session]);
-
   // Helper to call backend search API
   async function searchApi(mode: string, q: string, maxResults = 10): Promise<SearchResult[]> {
     const body: any = {
@@ -55,37 +48,29 @@ export default function Dashboard() {
       model: 'gpt-3.5-turbo',
       maxResults,
     };
-
     // Set mode based on filter
     if (mode !== 'all') {
       body.mode = mode;
     }
-
     const res = await fetch('/api/search', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
-
     if (!res.ok) {
       throw new Error(`Search API error: ${res.status}`);
     }
-
     const data = await res.json();
     return data.results || [];
   }
-
   async function handleSearch() {
     if (!query.trim()) return;
-
     setIsSearching(true);
     setCurrentResults(null);
     setWarning(null); // Clear any previous warnings
-
     try {
       const q = query.trim();
       let results: SearchResult[] = [];
-
       // Use selectedFilter to determine which API call to make
       // This ensures the selected mode is used for the search
       if (selectedFilter === 'all') {
@@ -115,15 +100,12 @@ export default function Dashboard() {
       } else if (selectedFilter === 'trending') {
         results = await searchApi('trending', q, 10);
       }
-
       setCurrentResults(results);
-
       // Save to history
       if (session?.user?.email && results.length > 0) {
         try {
           await saveSearchHistory(session.user.email, {
             query: q,
-            timestamp: new Date().toISOString(),
             filter: selectedFilter,
             results: results,
           });
@@ -139,15 +121,12 @@ export default function Dashboard() {
       setIsSearching(false);
     }
   }
-
   // Filter results based on selected mode for display
   const displayResults = currentResults;
-
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-8">Dashboard</h1>
-
         {/* Search Section */}
         <div className="bg-white rounded-lg shadow p-6 mb-6">
           <div className="flex gap-4 mb-4">
@@ -167,7 +146,6 @@ export default function Dashboard() {
               {isSearching ? 'Searching...' : 'Search'}
             </button>
           </div>
-
           {/* Filter Buttons - selectedFilter stays active */}
           <div className="flex gap-2 flex-wrap">
             {(['all', 'academic', 'news', 'web', 'images', 'videos', 'trending'] as SearchMode[]).map((mode) => (
@@ -185,7 +163,6 @@ export default function Dashboard() {
             ))}
           </div>
         </div>
-
         {/* Warning/Error Messages */}
         {warning && (
           <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
@@ -201,7 +178,6 @@ export default function Dashboard() {
             </div>
           </div>
         )}
-
         {/* Results Section */}
         {displayResults && (
           <div className="bg-white rounded-lg shadow p-6">
@@ -218,7 +194,6 @@ export default function Dashboard() {
                 <option value="date">Sort by Date</option>
               </select>
             </div>
-
             {displayResults.length === 0 ? (
               <p className="text-gray-500 text-center py-8">No results found.</p>
             ) : (
@@ -228,8 +203,8 @@ export default function Dashboard() {
                     <h3 className="text-lg font-semibold text-blue-600 mb-2">{result.title}</h3>
                     <p className="text-gray-700 mb-2">{result.content}</p>
                     <div className="flex items-center gap-4 text-sm text-gray-500">
-                      <span>Source: {result.source}</span>
-                      {result.relevanceScore && <span>Relevance: {result.relevanceScore}%</span>}
+                      Source: {result.source}
+                      {result.relevanceScore && ` · Relevance: ${result.relevanceScore}%`}
                     </div>
                     {result.imageUrl && (
                       <div className="mt-3">
@@ -258,7 +233,6 @@ export default function Dashboard() {
             )}
           </div>
         )}
-
         {/* Search History */}
         {searchHistory.length > 0 && (
           <div className="bg-white rounded-lg shadow p-6 mt-6">
