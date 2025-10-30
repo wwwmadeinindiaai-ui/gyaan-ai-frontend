@@ -29,8 +29,10 @@ export default function Dashboard() {
   const [isSearching, setIsSearching] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState<SearchMode>('all');
   const [sortBy, setSortBy] = useState<'relevance' | 'date'>('relevance');
-  const handleSearch = async (userEmail: string, searchQuery: string) =>
+  async function handleSearch() {
+  // ...full implementation
 }
+
 
 
   // Load search history
