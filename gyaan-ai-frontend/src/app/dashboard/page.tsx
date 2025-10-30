@@ -18,7 +18,6 @@ interface BaseResult {
 }
 
 type SearchMode = 'all' | 'academic' | 'news' | 'web' | 'images' | 'videos';
-
 type SearchResult = BaseResult;
 
 export default function Dashboard() {
@@ -48,6 +47,7 @@ export default function Dashboard() {
     if (!query.trim()) return;
     setIsSearching(true);
     setCurrentResults(null);
+
     try {
       // Map UI filter to backend params
       const body: any = {
@@ -59,7 +59,7 @@ export default function Dashboard() {
       if (selectedFilter === 'images') {
         body.mode = 'images';
       } else if (selectedFilter === 'videos') {
-        body.mode = 'web';
+        body.mode = 'videos';
       } else if (selectedFilter === 'all') {
         body.mode = 'all';
       } else {
@@ -71,10 +71,12 @@ export default function Dashboard() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-      if (!response.ok) throw new Error(`API error: ${response.status}`);
-      const data = await response.json();
 
+      if (!response.ok) throw new Error(`API error: ${response.status}`);
+
+      const data = await response.json();
       const rawResults: any[] = data?.results || [];
+
       const normalized = (selectedFilter === 'videos')
         ? rawResults.filter(r => !!r.videoUrl)
         : rawResults;
@@ -121,185 +123,147 @@ export default function Dashboard() {
     if (sortBy === 'date') {
       out.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     } else {
-      out.sort((a, b) => (b.relevanceScore || 0) - (a.relevanceScore || 0));
+      out.sort((a, b) => (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0));
     }
     return out;
   };
 
-  const exportAsJSON = () => {
-    if (!currentResults) return;
-    const dataStr = JSON.stringify({ query, results: currentResults, timestamp: new Date().toISOString() }, null, 2);
-    const blob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `search-results-${Date.now()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const exportAsText = () => {
-    if (!currentResults) return;
-    let text = `Search Query: ${query}\nDate: ${new Date().toLocaleString()}\n\n`;
-    currentResults.forEach((r, i) => {
-      text += `${i + 1}. ${r.title}\nSource: ${r.source}\n${r.content}\n\n`;
-    });
-    const blob = new Blob([text], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `search-results-${Date.now()}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const copyToClipboard = () => {
-    if (!currentResults) return;
-    let text = `Search Query: ${query}\n\n`;
-    currentResults.forEach((r, i) => {
-      text += `${i + 1}. ${r.title}\n${r.content}\n\n`;
-    });
-    navigator.clipboard.writeText(text);
-    alert('Copied to clipboard!');
-  };
-
-  const loadHistoryItem = (item: SearchHistory) => {
+  function loadHistoryItem(item: SearchHistory) {
     setQuery(item.query);
-    // @ts-ignore tolerate legacy structure
-    setCurrentResults(item.results as any);
-  };
+    setCurrentResults(item.results);
+    if (item.filters?.source) setSelectedFilter(item.filters.source as SearchMode);
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-8">
-      <div className="max-w-6xl mx-auto">
-        <h1 className="text-4xl font-bold mb-8 text-gray-800">AI Search Dashboard</h1>
+      <div className="max-w-7xl mx-auto space-y-8">
+        {/* Header */}
+        <div className="bg-white rounded-xl shadow-lg p-6">
+          <h1 className="text-4xl font-bold text-gray-800 mb-2">🔍 AI-Powered Search Dashboard</h1>
+          <p className="text-gray-600">Discover insights across multiple sources with advanced filters</p>
+        </div>
 
-        <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
-          <h2 className="text-2xl font-semibold mb-4 text-gray-700">Search Your Queries</h2>
+        {/* Search Bar */}
+        <div className="bg-white rounded-xl shadow-lg p-6">
           <div className="flex gap-4 mb-4">
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+              onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
               placeholder="Enter your search query..."
-              className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              disabled={isSearching}
+              className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
             />
             <button
               onClick={handleSearch}
               disabled={isSearching || !query.trim()}
-              className="px-8 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+              className="px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 transition-colors font-semibold"
             >
-              {isSearching ? 'Searching...' : 'Search'}
+              {isSearching ? '🔄 Searching...' : '🔍 Search'}
             </button>
           </div>
 
-          <div className="flex gap-4 items-center flex-wrap">
-            <label className="font-medium text-gray-700">Mode:</label>
-            <select
-              value={selectedFilter}
-              onChange={(e) => setSelectedFilter(e.target.value as SearchMode)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="all">All Sources</option>
-              <option value="academic">Academic</option>
-              <option value="news">News</option>
-              <option value="web">Web</option>
-              <option value="images">Images</option>
-              <option value="videos">Videos</option>
-            </select>
+          {/* Filters */}
+          <div className="flex flex-wrap gap-3">
+            {(['all', 'web', 'academic', 'news', 'images', 'videos'] as SearchMode[]).map((mode) => (
+              <button
+                key={mode}
+                onClick={() => setSelectedFilter(mode)}
+                className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                  selectedFilter === mode
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                {mode.charAt(0).toUpperCase() + mode.slice(1)}
+              </button>
+            ))}
+          </div>
 
-            <label className="font-medium text-gray-700 ml-2">Sort by:</label>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as 'relevance' | 'date')}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          {/* Sort Options */}
+          <div className="mt-4 flex gap-3 items-center">
+            <span className="text-gray-700 font-medium">Sort by:</span>
+            <button
+              onClick={() => setSortBy('relevance')}
+              className={`px-4 py-2 rounded-lg transition-all ${
+                sortBy === 'relevance' ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
             >
-              <option value="relevance">Relevance</option>
-              <option value="date">Date</option>
-            </select>
+              📊 Relevance
+            </button>
+            <button
+              onClick={() => setSortBy('date')}
+              className={`px-4 py-2 rounded-lg transition-all ${
+                sortBy === 'date' ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              📅 Date
+            </button>
           </div>
         </div>
 
         {/* Results */}
-        {currentResults && (
-          <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-2xl font-semibold text-gray-700">Results ({currentResults.length})</h3>
-              <div className="flex gap-2">
-                <button onClick={copyToClipboard} className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm">📋 Copy</button>
-                <button onClick={exportAsText} className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm">📄 Export TXT</button>
-                <button onClick={exportAsJSON} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm">💾 Export JSON</button>
-              </div>
+        <div className="bg-white rounded-xl shadow-lg p-6">
+          <h2 className="text-2xl font-semibold text-gray-700 mb-4">Search Results</h2>
+          {isSearching ? (
+            <div className="text-center py-12">
+              <div className="inline-block animate-spin rounded-full h-16 w-16 border-t-4 border-blue-600"></div>
+              <p className="mt-4 text-gray-600 text-lg">Searching across sources...</p>
             </div>
-
-            {/* Render by mode */}
-            {selectedFilter === 'images' ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                {getFilteredResults().length === 0 ? (
-                  <p className="text-gray-500">No images found. Try a different query.</p>
-                ) : (
-                  getFilteredResults().map((r) => (
-                    <figure key={r.id} className="rounded-lg overflow-hidden border bg-gray-50">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={r.imageUrl || ''} alt={r.title} className="w-full h-40 object-cover" />
-                      <figcaption className="p-2 text-xs text-gray-600">
-                        <div className="font-medium truncate">{r.title}</div>
-                        {r.imageAuthorName && (
-                          <span>
-                            Photo by <a className="underline" href={r.imageAuthorUrl || '#'} target="_blank" rel="noreferrer">{r.imageAuthorName}</a> on Unsplash
-                          </span>
-                        )}
-                      </figcaption>
-                    </figure>
-                  ))
-                )}
-              </div>
-            ) : selectedFilter === 'videos' ? (
-              <div className="space-y-4">
-                {getFilteredResults().length === 0 ? (
-                  <p className="text-gray-500">No videos found. Try a different query.</p>
-                ) : (
-                  getFilteredResults().map((r, index) => (
-                    <div key={r.id} className="p-4 border-l-4 border-blue-500 bg-gray-50 rounded-r-lg">
-                      <div className="flex justify-between items-start mb-2">
-                        <h4 className="text-lg font-semibold text-gray-800">{index + 1}. {r.title}</h4>
-                        <span className="text-xs text-gray-500 bg-white px-2 py-1 rounded">{r.source}</span>
+          ) : currentResults ? (
+            <div className="space-y-4">
+              {getFilteredResults().length > 0 ? (
+                getFilteredResults().map((result) => (
+                  <div key={result.id} className="p-4 bg-gray-50 rounded-lg hover:bg-blue-50 transition-colors border border-gray-200 hover:border-blue-300">
+                    {result.videoUrl && (
+                      <div className="mb-3">
+                        <video
+                          src={result.videoUrl}
+                          controls
+                          className="w-full max-h-64 rounded-lg"
+                        />
                       </div>
-                      <p className="text-gray-700 mb-2">{r.content}</p>
-                      {r.videoUrl && (
-                        <a className="text-blue-600 underline" href={r.videoUrl} target="_blank" rel="noreferrer">Watch video</a>
+                    )}
+                    {result.imageUrl && (
+                      <div className="mb-3">
+                        <img
+                          src={result.imageUrl}
+                          alt={result.title}
+                          className="w-full max-h-64 object-cover rounded-lg"
+                        />
+                        {result.imageAuthorName && (
+                          <p className="text-xs text-gray-500 mt-1">
+                            Photo by{' '}
+                            {result.imageAuthorUrl ? (
+                              <a href={result.imageAuthorUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                                {result.imageAuthorName}
+                              </a>
+                            ) : (
+                              result.imageAuthorName
+                            )}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                    <h3 className="text-xl font-semibold text-blue-600 mb-2">{result.title}</h3>
+                    <p className="text-sm text-gray-500 mb-2">Source: {result.source}</p>
+                    <p className="text-gray-700 mb-2 leading-relaxed">{result.content}</p>
+                    <div className="flex justify-between items-center text-xs text-gray-500">
+                      {new Date(result.timestamp).toLocaleString()}
+                      {result.relevanceScore && (
+                        <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded">Relevance: {result.relevanceScore.toFixed(1)}%</span>
                       )}
                     </div>
-                  ))
-                )}
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {getFilteredResults().length === 0 ? (
-                  <p className="text-gray-500">No results found. Try adjusting filters.</p>
-                ) : (
-                  getFilteredResults().map((result, index) => (
-                    <div key={result.id} className="p-4 border-l-4 border-blue-500 bg-gray-50 rounded-r-lg hover:bg-gray-100 transition-colors">
-                      <div className="flex justify-between items-start mb-2">
-                        <h4 className="text-lg font-semibold text-gray-800">{index + 1}. {result.title}</h4>
-                        <span className="text-xs text-gray-500 bg-white px-2 py-1 rounded">{result.source}</span>
-                      </div>
-                      <p className="text-gray-700 mb-2 leading-relaxed">{result.content}</p>
-                      <div className="flex justify-between items-center text-xs text-gray-500">
-                        {new Date(result.timestamp).toLocaleString()}
-                        {result.relevanceScore && (
-                          <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded">Relevance: {result.relevanceScore.toFixed(1)}%</span>
-                        )}
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            )}
-          </div>
-        )}
+                  </div>
+                ))
+              ) : (
+                <p className="text-gray-500 text-center py-8">No results found. Try adjusting your filters.</p>
+              )}
+            </div>
+          ) : (
+            <p className="text-gray-500 text-center py-8">Enter a query and click Search to see results here.</p>
+          )}
+        </div>
 
         {/* History */}
         <div className="bg-white rounded-xl shadow-lg p-6">
