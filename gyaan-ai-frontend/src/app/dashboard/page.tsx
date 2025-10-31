@@ -1,9 +1,13 @@
 'use client';
+
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { SearchHistory, getSearchHistory, saveSearchHistory } from '@/lib/firestore-helpers';
+import EnhancedSearchBar from '../components/EnhancedSearchBar';
+
 // NOTE: For Images mode to work, ensure UNSPLASH_ACCESS_KEY is set in your .env file
 // Example: UNSPLASH_ACCESS_KEY=your_actual_key_here
+
 // Types
 interface BaseResult {
   id: string;
@@ -17,8 +21,10 @@ interface BaseResult {
   imageAuthorName?: string;
   imageAuthorUrl?: string;
 }
+
 type SearchMode = 'all' | 'academic' | 'news' | 'web' | 'images' | 'videos' | 'trending';
 type SearchResult = BaseResult;
+
 export default function Dashboard() {
   const { data: session } = useSession();
   const [query, setQuery] = useState('');
@@ -28,6 +34,7 @@ export default function Dashboard() {
   const [selectedFilter, setSelectedFilter] = useState<SearchMode>('all');
   const [sortBy, setSortBy] = useState<'relevance' | 'date'>('relevance');
   const [warning, setWarning] = useState<string | null>(null);
+
   // Load search history
   useEffect(() => {
     const load = async () => {
@@ -41,6 +48,7 @@ export default function Dashboard() {
     };
     load();
   }, [session]);
+
   // Helper to call backend search API
   async function searchApi(mode: string, q: string, maxResults = 10): Promise<SearchResult[]> {
     const body: any = {
@@ -48,36 +56,48 @@ export default function Dashboard() {
       model: 'gpt-3.5-turbo',
       maxResults,
     };
+
     // Set mode based on filter
     if (mode !== 'all') {
       body.mode = mode;
     }
+
     const res = await fetch('/api/search', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
+
     if (!res.ok) {
       throw new Error(`Search API error: ${res.status}`);
     }
+
     const data = await res.json();
     return data.results || [];
   }
-  async function handleSearch() {
-    if (!query.trim()) return;
+
+  async function handleSearch(searchQuery?: string, filter?: string) {
+    // Use the provided searchQuery or fall back to the query state
+    const q = searchQuery || query;
+    // Use the provided filter or fall back to selectedFilter state
+    const mode = filter || selectedFilter;
+    
+    if (!q.trim()) return;
+    
     setIsSearching(true);
     setCurrentResults(null);
     setWarning(null); // Clear any previous warnings
+
     try {
-      const q = query.trim();
       let results: SearchResult[] = [];
-      // Use selectedFilter to determine which API call to make
+
+      // Use mode to determine which API call to make
       // This ensures the selected mode is used for the search
-      if (selectedFilter === 'all') {
+      if (mode === 'all') {
         results = await searchApi('all', q, 10);
-      } else if (selectedFilter === 'academic') {
+      } else if (mode === 'academic') {
         results = await searchApi('academic', q, 10);
-      } else if (selectedFilter === 'images') {
+      } else if (mode === 'images') {
         // Images mode with error/warning handling
         try {
           results = await searchApi('images', q, 12);
@@ -91,22 +111,24 @@ export default function Dashboard() {
           setWarning('Image search failed. Please check that UNSPLASH_ACCESS_KEY is set in your .env file and the API is accessible.');
           results = [];
         }
-      } else if (selectedFilter === 'videos') {
+      } else if (mode === 'videos') {
         results = await searchApi('videos', q, 10);
-      } else if (selectedFilter === 'news') {
+      } else if (mode === 'news') {
         results = await searchApi('news', q, 10);
-      } else if (selectedFilter === 'web') {
+      } else if (mode === 'web') {
         results = await searchApi('web', q, 10);
-      } else if (selectedFilter === 'trending') {
+      } else if (mode === 'trending') {
         results = await searchApi('trending', q, 10);
       }
+
       setCurrentResults(results);
+
       // Save to history
       if (session?.user?.email && results.length > 0) {
         try {
           await saveSearchHistory(session.user.email, {
             query: q,
-            mode: selectedFilter,
+            mode: mode as SearchMode,
             results: results,
           });
         } catch (e) {
@@ -121,32 +143,41 @@ export default function Dashboard() {
       setIsSearching(false);
     }
   }
+
   // Filter results based on selected mode for display
   const displayResults = currentResults;
+
+  // Extract query strings from search history for suggestions
+  const searchHistoryQueries = searchHistory.map(item => item.query);
+
+  // Sample trending searches (can be fetched from API in production)
+  const trendingSearches = [
+    'Artificial Intelligence trends 2025',
+    'Climate change solutions',
+    'Latest technology news',
+  ];
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-8">Dashboard</h1>
-        {/* Search Section */}
+
+        {/* Enhanced Search Section */}
         <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <div className="flex gap-4 mb-4">
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-              placeholder="Enter your search query..."
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          {/* EnhancedSearchBar Component - New modular component */}
+          <div className="mb-4">
+            <EnhancedSearchBar
+              onSearch={handleSearch}
+              placeholder="Search the web..."
+              searchHistory={searchHistoryQueries}
+              trendingSearches={trendingSearches}
+              currentFilter={selectedFilter}
+              isLoading={isSearching}
+              className=""
             />
-            <button
-              onClick={handleSearch}
-              disabled={isSearching || !query.trim()}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-            >
-              {isSearching ? 'Searching...' : 'Search'}
-            </button>
           </div>
-          {/* Filter Buttons - selectedFilter stays active */}
+
+          {/* Original Filter Buttons - Preserved from old implementation */}
           <div className="flex gap-2 flex-wrap">
             {(['all', 'academic', 'news', 'web', 'images', 'videos', 'trending'] as SearchMode[]).map((mode) => (
               <button
@@ -163,6 +194,7 @@ export default function Dashboard() {
             ))}
           </div>
         </div>
+
         {/* Warning/Error Messages */}
         {warning && (
           <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
@@ -178,6 +210,7 @@ export default function Dashboard() {
             </div>
           </div>
         )}
+
         {/* Results Section */}
         {displayResults && (
           <div className="bg-white rounded-lg shadow p-6">
@@ -194,6 +227,7 @@ export default function Dashboard() {
                 <option value="date">Sort by Date</option>
               </select>
             </div>
+
             {displayResults.length === 0 ? (
               <p className="text-gray-500 text-center py-8">No results found.</p>
             ) : (
@@ -233,6 +267,7 @@ export default function Dashboard() {
             )}
           </div>
         )}
+
         {/* Search History */}
         {searchHistory.length > 0 && (
           <div className="bg-white rounded-lg shadow p-6 mt-6">
