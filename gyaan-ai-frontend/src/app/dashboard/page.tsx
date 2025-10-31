@@ -1,10 +1,10 @@
 'use client';
-
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { SearchHistory, getSearchHistory, saveSearchHistory } from '@/lib/firestore-helpers';
 import EnhancedSearchBar from '../components/EnhancedSearchBar';
 import ResultsGrid from '../components/ResultsGrid';
+import SummaryPanel from '../components/SummaryPanel';
 
 // NOTE: For Images mode to work, ensure UNSPLASH_ACCESS_KEY is set in your .env file
 // Example: UNSPLASH_ACCESS_KEY=your_actual_key_here
@@ -35,6 +35,8 @@ export default function Dashboard() {
   const [selectedFilter, setSelectedFilter] = useState<SearchMode>('all');
   const [sortBy, setSortBy] = useState<'relevance' | 'date'>('relevance');
   const [warning, setWarning] = useState<string | null>(null);
+  const [summary, setSummary] = useState<string | null>(null);
+  const [citations, setCitations] = useState<Array<{ source: string; url?: string }>>([]);
 
   // Load search history
   useEffect(() => {
@@ -57,22 +59,18 @@ export default function Dashboard() {
       model: 'gpt-3.5-turbo',
       maxResults,
     };
-
     // Set mode based on filter
     if (mode !== 'all') {
       body.mode = mode;
     }
-
     const res = await fetch('/api/search', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
-
     if (!res.ok) {
       throw new Error(`Search API error: ${res.status}`);
     }
-
     const data = await res.json();
     return data.results || [];
   }
@@ -88,10 +86,11 @@ export default function Dashboard() {
     setIsSearching(true);
     setCurrentResults(null);
     setWarning(null); // Clear any previous warnings
-
+    setSummary(null); // Clear previous summary
+    setCitations([]); // Clear previous citations
+    
     try {
       let results: SearchResult[] = [];
-
       // Use mode to determine which API call to make
       // This ensures the selected mode is used for the search
       if (mode === 'all') {
@@ -121,9 +120,25 @@ export default function Dashboard() {
       } else if (mode === 'trending') {
         results = await searchApi('trending', q, 10);
       }
-
+      
       setCurrentResults(results);
-
+      
+      // Extract summary and citations from backend response if available
+      // The backend may return summary/citations in the response object
+      // This is an additive UI layer that displays data if present
+      if (results && results.length > 0) {
+        // Generate summary from results (can be enhanced to use backend summary if available)
+        const summaryText = `Found ${results.length} ${mode} results for "${q}". ${results[0]?.content?.substring(0, 150) || ''}...`;
+        setSummary(summaryText);
+        
+        // Extract citations from results
+        const extractedCitations = results.slice(0, 5).map(r => ({
+          source: r.source,
+          url: r.videoUrl || r.imageUrl || undefined
+        }));
+        setCitations(extractedCitations);
+      }
+      
       // Save to history
       if (session?.user?.email && results.length > 0) {
         try {
@@ -176,7 +191,7 @@ export default function Dashboard() {
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-8">Dashboard</h1>
-
+        
         {/* Enhanced Search Section */}
         <div className="bg-white rounded-lg shadow p-6 mb-6">
           {/* EnhancedSearchBar Component - New modular component */}
@@ -191,7 +206,7 @@ export default function Dashboard() {
               className=""
             />
           </div>
-
+          
           {/* Original Filter Buttons - Preserved from old implementation */}
           <div className="flex gap-2 flex-wrap">
             {(['all', 'academic', 'news', 'web', 'images', 'videos', 'trending'] as SearchMode[]).map((mode) => (
@@ -209,7 +224,7 @@ export default function Dashboard() {
             ))}
           </div>
         </div>
-
+        
         {/* Warning/Error Messages */}
         {warning && (
           <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
@@ -225,7 +240,16 @@ export default function Dashboard() {
             </div>
           </div>
         )}
-
+        
+        {/* SummaryPanel Component - New additive UI layer */}
+        {summary && (
+          <SummaryPanel
+            summary={summary}
+            citations={citations}
+            isLoading={isSearching}
+          />
+        )}
+        
         {/* Results Section - Now using ResultsGrid component */}
         {displayResults && (
           <div className="bg-white rounded-lg shadow p-6">
@@ -253,7 +277,7 @@ export default function Dashboard() {
             />
           </div>
         )}
-
+        
         {/* Search History */}
         {searchHistory.length > 0 && (
           <div className="bg-white rounded-lg shadow p-6 mt-6">
