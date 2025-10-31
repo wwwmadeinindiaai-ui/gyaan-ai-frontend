@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { SearchHistory, getSearchHistory, saveSearchHistory } from '@/lib/firestore-helpers';
 import EnhancedSearchBar from '../components/EnhancedSearchBar';
+import ResultsGrid from '../components/ResultsGrid';
 
 // NOTE: For Images mode to work, ensure UNSPLASH_ACCESS_KEY is set in your .env file
 // Example: UNSPLASH_ACCESS_KEY=your_actual_key_here
@@ -157,6 +158,20 @@ export default function Dashboard() {
     'Latest technology news',
   ];
 
+  // Transform results for ResultCard component
+  const transformedResults = displayResults?.map(result => ({
+    id: result.id,
+    title: result.title,
+    description: result.content,
+    metadata: {
+      source: result.source,
+      ...(result.relevanceScore && { relevance: `${result.relevanceScore}%` }),
+      ...(result.videoUrl && { 'Video URL': result.videoUrl }),
+      ...(result.imageUrl && { 'Image': result.imageUrl }),
+      ...(result.imageAuthorName && { 'Photo by': result.imageAuthorName }),
+    },
+  })) || [];
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -211,7 +226,7 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Results Section */}
+        {/* Results Section - Now using ResultsGrid component */}
         {displayResults && (
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex justify-between items-center mb-4">
@@ -227,44 +242,15 @@ export default function Dashboard() {
                 <option value="date">Sort by Date</option>
               </select>
             </div>
-
-            {displayResults.length === 0 ? (
-              <p className="text-gray-500 text-center py-8">No results found.</p>
-            ) : (
-              <div className="space-y-4">
-                {displayResults.map((result) => (
-                  <div key={result.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                    <h3 className="text-lg font-semibold text-blue-600 mb-2">{result.title}</h3>
-                    <p className="text-gray-700 mb-2">{result.content}</p>
-                    <div className="flex items-center gap-4 text-sm text-gray-500">
-                      Source: {result.source}
-                      {result.relevanceScore && ` · Relevance: ${result.relevanceScore}%`}
-                    </div>
-                    {result.imageUrl && (
-                      <div className="mt-3">
-                        <img src={result.imageUrl} alt={result.title} className="max-w-sm rounded-lg" />
-                        {result.imageAuthorName && (
-                          <p className="text-xs text-gray-500 mt-1">
-                            Photo by {result.imageAuthorUrl ? (
-                              <a href={result.imageAuthorUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
-                                {result.imageAuthorName}
-                              </a>
-                            ) : result.imageAuthorName}
-                          </p>
-                        )}
-                      </div>
-                    )}
-                    {result.videoUrl && (
-                      <div className="mt-3">
-                        <a href={result.videoUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                          Watch Video
-                        </a>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
+            
+            {/* ResultsGrid Component - New modular UI layer */}
+            <ResultsGrid
+              results={transformedResults}
+              onResultClick={(result) => {
+                console.log('Result clicked:', result);
+              }}
+              emptyMessage="No results found."
+            />
           </div>
         )}
 
