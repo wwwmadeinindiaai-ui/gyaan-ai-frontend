@@ -1,5 +1,4 @@
 'use client';
-
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getReports, type Report } from '@/lib/firestore-helpers';
@@ -113,7 +112,7 @@ export default function ReportsPage() {
               <div
                 key={report.id}
                 className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden cursor-pointer"
-                onClick={() => handleEditReport(report.id)}
+                onClick={() => report.id && handleEditReport(report.id)}
               >
                 <div className="p-6">
                   <div className="flex items-start justify-between">
