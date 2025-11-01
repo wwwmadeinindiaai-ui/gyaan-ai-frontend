@@ -16,6 +16,7 @@ import {
   type QueryDocumentSnapshot,
   type SnapshotOptions,
 } from "firebase/firestore";
+
 export interface SearchHistory {
   id?: string;
   userId: string;
@@ -28,6 +29,17 @@ export interface SearchHistory {
   };
   mode?: string;
 }
+
+export interface Report {
+  id?: string;
+  title: string;
+  description?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+  status?: string;
+  data?: any;
+}
+
 /**
  * Firestore data converter for SearchHistory
  * Ensures timestamp is always a Date (in app code) and stored as Timestamp in Firestore.
@@ -59,7 +71,9 @@ export const searchHistoryConverter: FirestoreDataConverter<SearchHistory> = {
     };
   },
 };
+
 const SEARCH_HISTORY_COLLECTION = "searchHistory";
+
 /**
  * Save a search to user's search history in Firestore
  */
@@ -79,6 +93,7 @@ export async function saveSearchHistory(
     throw error;
   }
 }
+
 /**
  * Get user's search history from Firestore
  */
@@ -93,6 +108,7 @@ export async function getSearchHistory(userId: string, limitCount: number = 10):
     throw error;
   }
 }
+
 /**
  * Clear all search history for a user
  */
@@ -108,6 +124,7 @@ export async function clearSearchHistory(userId: string): Promise<void> {
     throw error;
   }
 }
+
 /**
  * Delete a specific search history entry
  */
@@ -120,6 +137,7 @@ export async function deleteSearchHistoryItem(searchId: string): Promise<void> {
     throw error;
   }
 }
+
 /**
  * Get a single search history item by ID
  */
@@ -138,14 +156,14 @@ export async function getSearchHistoryItem(searchId: string): Promise<SearchHist
 /**
  * Get reports from Firestore
  */
-export async function getReports(): Promise<any[]> {
+export async function getReports(): Promise<Report[]> {
   try {
     const reportsRef = collection(db, "reports");
     const querySnapshot = await getDocs(reportsRef);
     return querySnapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
-    }));
+    } as Report));
   } catch (error) {
     console.error("Error fetching reports:", error);
     throw error;
