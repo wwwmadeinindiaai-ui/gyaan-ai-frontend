@@ -32,6 +32,7 @@ export interface SearchHistory {
 
 export interface Report {
   id?: string;
+  name: string;
   title: string;
   description?: string;
   createdAt?: Date;
@@ -79,7 +80,7 @@ const SEARCH_HISTORY_COLLECTION = "searchHistory";
  */
 export async function saveSearchHistory(
   userId: string,
-  searchData: Omit<SearchHistory, "id" | "timestamp">
+  searchData: Omit<SearchHistory, "userId" | "id">
 ): Promise<void> {
   try {
     const searchHistoryRef = collection(db, SEARCH_HISTORY_COLLECTION).withConverter(searchHistoryConverter);
