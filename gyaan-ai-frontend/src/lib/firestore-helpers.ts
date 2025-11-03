@@ -38,6 +38,7 @@ export interface Report {
   createdAt: string | number | Date;
   updatedAt: string | number | Date;
   status?: string;
+  type?: string;
   data?: any;
 }
 
