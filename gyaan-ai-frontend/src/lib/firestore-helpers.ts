@@ -81,7 +81,7 @@ const SEARCH_HISTORY_COLLECTION = "searchHistory";
  */
 export async function saveSearchHistory(
   userId: string,
-  searchData: Omit<SearchHistory, "userId" | "id">
+  searchData: Omit<SearchHistory, "userId" | "id" | "timestamp">
 ): Promise<void> {
   try {
     const searchHistoryRef = collection(db, SEARCH_HISTORY_COLLECTION).withConverter(searchHistoryConverter);
