@@ -1,4 +1,5 @@
 import React from 'react';
+export const dynamic = "force-dynamic";
 
 // Section Component
 const Section = ({ children, className = '', id = '' }: { children: React.ReactNode; className?: string; id?: string }) => (
@@ -94,9 +95,9 @@ export default function Home() {
   return (
     <div>
       {/* Hero Section */}
-      <SocialProof />
-      {/* Features */}
       <Features />
+      {/* Features */}
+      <SocialProof />
       {/* CTA Section */}
       <section className="bg-blue-600 text-white">
         <Container>
