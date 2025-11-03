@@ -42,86 +42,63 @@ const SocialProof = () => (
   </div>
 );
 
-// Main Marketing Landing Page
-export default function MarketingPage() {
+// Features Section Component
+const Features = () => (
+  <div className="py-16 bg-gray-50">
+    <Container>
+      <div className="text-center mb-16">
+        <h2 className="text-3xl md:text-4xl font-bold mb-4 text-gray-900">
+          Powerful Features to Accelerate Your Learning
+        </h2>
+        <p className="text-xl text-gray-600">
+          Everything you need to master new skills and knowledge
+        </p>
+      </div>
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <FeatureCard 
+          icon="🤖" 
+          title="AI-Powered Learning" 
+          description="Experience adaptive learning powered by advanced artificial intelligence that understands your pace and style."
+        />
+        <FeatureCard 
+          icon="📚" 
+          title="Comprehensive Content" 
+          description="Access a vast library of curated educational materials covering diverse subjects and skill levels."
+        />
+        <FeatureCard 
+          icon="🎯" 
+          title="Personalized Paths" 
+          description="Get customized learning paths tailored to your goals, background, and preferred learning methods."
+        />
+        <FeatureCard 
+          icon="📊" 
+          title="Progress Tracking" 
+          description="Monitor your advancement with detailed analytics and insights into your learning journey."
+        />
+        <FeatureCard 
+          icon="💬" 
+          title="Interactive Support" 
+          description="Engage with AI tutors and community experts for instant help whenever you need it."
+        />
+        <FeatureCard 
+          icon="🏆" 
+          title="Certification Ready" 
+          description="Prepare for industry-recognized certifications with targeted practice and assessment tools."
+        />
+      </div>
+    </Container>
+  </div>
+);
+
+export default function Home() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
+    <div>
       {/* Hero Section */}
-      <Section className="pt-20 md:pt-32">
-        <Container>
-          <div className="text-center max-w-4xl mx-auto">
-            <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-gray-900 mb-6 leading-tight">
-              Transform Your Learning Experience with{' '}
-              <span className="text-blue-600">Gyaan AI</span>
-            </h1>
-            <p className="text-xl md:text-2xl text-gray-600 mb-8 leading-relaxed">
-              Intelligent, personalized education powered by cutting-edge AI technology.
-              Learn smarter, faster, and more effectively.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button className="bg-blue-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-blue-700 transition-colors duration-300 shadow-lg">
-                Get Started Free
-              </button>
-              <button className="bg-white text-blue-600 px-8 py-4 rounded-lg text-lg font-semibold border-2 border-blue-600 hover:bg-blue-50 transition-colors duration-300">
-                Watch Demo
-              </button>
-            </div>
-          </div>
-        </Container>
-      </Section>
-
-      {/* Social Proof */}
       <SocialProof />
-
-      {/* Features Section */}
-      <Section id="features">
-        <Container>
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-              Powerful Features for Modern Learning
-            </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Everything you need to accelerate your educational journey
-            </p>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            <FeatureCard
-              icon="🤖"
-              title="AI-Powered Learning"
-              description="Leverage advanced AI algorithms that adapt to your learning style and pace for optimal knowledge retention."
-            />
-            <FeatureCard
-              icon="📚"
-              title="Comprehensive Content"
-              description="Access a vast library of curated educational materials covering diverse subjects and skill levels."
-            />
-            <FeatureCard
-              icon="🎯"
-              title="Personalized Paths"
-              description="Get customized learning paths tailored to your goals, background, and preferred learning methods."
-            />
-            <FeatureCard
-              icon="📊"
-              title="Progress Tracking"
-              description="Monitor your advancement with detailed analytics and insights into your learning journey."
-            />
-            <FeatureCard
-              icon="💬"
-              title="Interactive Support"
-              description="Engage with AI tutors and community experts for instant help whenever you need it."
-            />
-            <FeatureCard
-              icon="🏆"
-              title="Certification Ready"
-              description="Prepare for industry-recognized certifications with targeted practice and assessment tools."
-            />
-          </div>
-        </Container>
-      </Section>
-
+      {/* Features */}
+      <Features />
       {/* CTA Section */}
-      <Section className="bg-blue-600 text-white">
+      <section className="bg-blue-600 text-white">
         <Container>
           <div className="text-center max-w-3xl mx-auto">
             <h2 className="text-4xl md:text-5xl font-bold mb-6">
@@ -135,7 +112,7 @@ export default function MarketingPage() {
             </button>
           </div>
         </Container>
-      </Section>
+      </section>
     </div>
   );
 }
