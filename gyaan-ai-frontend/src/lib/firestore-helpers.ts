@@ -35,8 +35,8 @@ export interface Report {
   name: string;
   title: string;
   description?: string;
-  createdAt?: Date;
-  updatedAt?: Date;
+  createdAt: string | number | Date;
+  updatedAt: string | number | Date;
   status?: string;
   data?: any;
 }
@@ -164,6 +164,8 @@ export async function getReports(): Promise<Report[]> {
     return querySnapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
+      createdAt: doc.data().createdAt || new Date(),
+      updatedAt: doc.data().updatedAt || new Date(),
     } as Report));
   } catch (error) {
     console.error("Error fetching reports:", error);
