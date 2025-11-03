@@ -9,7 +9,7 @@ const Section = ({ children, className = '', id = '' }: { children: React.ReactN
 
 // Container Component
 const Container = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (
-  <div className={`container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl ${className}`}>
+  <div className={`Container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl ${className}`}>
     {children}
   </div>
 );
