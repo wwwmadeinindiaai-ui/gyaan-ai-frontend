@@ -3,8 +3,10 @@ import { Inter } from "next/font/google"; // Use Google, not local, for Inter
 import "./globals.css";
 import AuthProvider from './components/auth-provider';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth'
-  import Navigation from './components/Navigation';
+import { authOptions } from '@/lib/auth'  
+import Navigation from './components/Navigation';
+import Footer from './components/Footer';
+
 const inter = Inter({
   variable: "--font-inter", // Recommended variable naming format
   subsets: ["latin"],
@@ -26,8 +28,9 @@ export default async function RootLayout({
     <html lang="en">
       <body className={`${inter.variable} antialiased`}>
         <AuthProvider session={session}>
-                    <Navigation />
+          <Navigation />
           {children}
+          <Footer />
         </AuthProvider>
       </body>
     </html>
