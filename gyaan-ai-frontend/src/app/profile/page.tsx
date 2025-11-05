@@ -1,9 +1,10 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { auth, db } from '@/lib/firebase';
-import { doc, getDoc, updateDoc, onSnapshot } from 'firebase/firestore';
-import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { useSession } from 'next-auth/react';
+import { db } from '@/lib/firebase';
+import { doc, updateDoc, onSnapshot } from 'firebase/firestore';
+import { signOut } from 'next-auth/react';
 import { Bell, User, Mail, Shield, LogOut, Save } from 'lucide-react';
 
 interface UserProfile {
@@ -16,50 +17,56 @@ interface UserProfile {
 
 export default function ProfilePage() {
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
+  const { data: session, status } = useSession();
   const [saving, setSaving] = useState(false);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [displayName, setDisplayName] = useState('');
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
 
-  useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
-      if (!user) {
-        router.push('/login');
-        return;
-      }
+  // Wait for session loading before rendering UI
+  if (status === 'loading') {
+    return <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+    </div>;
+  }
 
-      // Real-time Firestore listener
-      const userDocRef = doc(db, 'users', user.uid);
+  // If not authenticated, show access denied or redirect
+  if (status !== 'authenticated' || !session) {
+    return <div className="p-10 text-center">Access Denied. Please sign in.</div>;
+  }
+
+  // Use session.user for profile info
+  const userEmail = session.user?.email || '';
+  const userName = session.user?.name || '';
+
+  // Real-time Firestore listener for profile updates
+  useEffect(() => {
+    if (session.user) {
+      const userDocRef = doc(db, 'users', session.user.email || '');
       const unsubscribeFirestore = onSnapshot(userDocRef, (docSnap) => {
         if (docSnap.exists()) {
           const data = docSnap.data();
           const profileData: UserProfile = {
-            email: user.email || '',
-            displayName: data.displayName || user.displayName || '',
+            email: userEmail,
+            displayName: data.displayName || userName,
             notificationsEnabled: data.notificationsEnabled ?? true,
-            emailVerified: user.emailVerified,
+            emailVerified: session.user?.emailVerified ?? false,
             createdAt: data.createdAt?.toDate().toLocaleDateString() || 'N/A',
           };
           setProfile(profileData);
           setDisplayName(profileData.displayName);
           setNotificationsEnabled(profileData.notificationsEnabled);
         }
-        setLoading(false);
       });
-
       return () => unsubscribeFirestore();
-    });
-
-    return () => unsubscribeAuth();
-  }, [router]);
+    }
+  }, [session, userEmail, userName]);
 
   const handleSaveProfile = async () => {
-    if (!auth.currentUser) return;
-
+    if (!session.user?.email) return;
     setSaving(true);
     try {
-      const userDocRef = doc(db, 'users', auth.currentUser.uid);
+      const userDocRef = doc(db, 'users', session.user.email);
       await updateDoc(userDocRef, {
         displayName,
         notificationsEnabled,
@@ -76,23 +83,17 @@ export default function ProfilePage() {
 
   const handleSignOut = async () => {
     try {
-      await signOut(auth);
-      router.push('/login');
+      await signOut({ callbackUrl: '/login' });
     } catch (error) {
       console.error('Error signing out:', error);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
-
+  // If profile not loaded yet, show loading
   if (!profile) {
-    return null;
+    return <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+    </div>;
   }
 
   return (
