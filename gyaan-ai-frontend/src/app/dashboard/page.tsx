@@ -33,7 +33,7 @@ const DashboardSidebar = () => (
     </div>
   </nav>
 );
-const ActionCard = ({ icon: Icon, title, description, href }) => (
+const ActionCard = ({ icon: Icon, title, description, href }: { icon: React.ElementType, title: string, description: string, href: string }) => (
   <a className="block p-6 bg-white rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl hover:border-indigo-300 transition-all duration-300 transform hover:-translate-y-1" href={href}>
     <Icon className="w-10 h-10 text-indigo-600 mb-3" />
     <h3 className="text-lg font-semibold text-gray-900 mb-1">{title}</h3>
