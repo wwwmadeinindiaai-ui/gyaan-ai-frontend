@@ -26,7 +26,13 @@ const firebaseConfig = process.env.NEXT_PUBLIC_FIREBASE_CONFIG
 const initialAuthToken = process.env.NEXT_PUBLIC_INITIAL_AUTH_TOKEN || undefined;
 
 // --- Initialize and Auth State ---
-let db, auth;
+
+import { Firestore, getFirestore } from 'firebase/firestore';
+import { Auth, getAuth } from 'firebase/auth';
+
+let db: Firestore | undefined;
+let auth: Auth | undefined;
+
 if (Object.keys(firebaseConfig).length) {
     const app = initializeApp(firebaseConfig);
     db = getFirestore(app);
