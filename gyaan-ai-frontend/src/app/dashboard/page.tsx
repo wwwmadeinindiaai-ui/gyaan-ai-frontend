@@ -91,7 +91,7 @@ export default function DashboardPage() {
       {/* Main Content Area */}
       <main className="flex-1 md:ml-64 bg-gray-50 p-6 sm:p-10">
         <div className="max-w-5xl mx-auto">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Welcome, {session.user.name.split(' ')[0]}</h1>
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">Welcome, {session.user?.name?.split(' ')[0] || 'User'}</h1>
           <p className="text-xl text-gray-600 mb-8">What knowledge will you uncover today?</p>
           {/* Quick Actions Grid */}
           {!results && (
