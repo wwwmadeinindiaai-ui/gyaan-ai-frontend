@@ -50,7 +50,7 @@ export default function ProfilePage() {
             email: userEmail,
             displayName: data.displayName || userName,
             notificationsEnabled: data.notificationsEnabled ?? true,
-            emailVerified: session.user?.emailVerified ?? false,
+            emailVerified: data.emailVerified ?? false,
             createdAt: data.createdAt?.toDate().toLocaleDateString() || 'N/A',
           };
           setProfile(profileData);
