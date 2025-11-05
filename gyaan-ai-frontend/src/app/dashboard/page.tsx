@@ -2,10 +2,6 @@
 import React, { useState, useEffect } from 'react';
 import { Search, BookOpen, Settings, Download, Clipboard, ArrowRight, Clock, LayoutDashboard, Users, Zap, Globe, HardDrive } from 'lucide-react';
 import { useSession } from 'next-auth/react';
-import EnhancedSearchBar from '../components/EnhancedSearchBar';
-import ResultCard from '../components/ResultCard';
-import ResultsGrid from '../components/ResultsGrid';
-import SummaryPanel from '../components/SummaryPanel';
 
 // Type definitions
 type ResultItem = {
@@ -22,7 +18,6 @@ type ResultsData = {
   data: ResultItem[];
 };
 
-// You may also import ActionCard, DashboardSidebar, and PrimaryButton from components, or implement them here as needed.
 // --- Sidebar ---
 const SidebarItem = ({ icon: Icon, label, href, active = false }: { icon: React.ElementType, label: string, href: string, active?: boolean }) => (
   <li>
@@ -32,6 +27,7 @@ const SidebarItem = ({ icon: Icon, label, href, active = false }: { icon: React.
     </a>
   </li>
 );
+
 const DashboardSidebar = () => (
   <nav className="w-64 bg-white shadow-lg h-full fixed top-16 left-0 pt-6 px-4 hidden md:block">
     <ul className="space-y-2">
@@ -49,6 +45,7 @@ const DashboardSidebar = () => (
     </div>
   </nav>
 );
+
 const ActionCard = ({ icon: Icon, title, description, href }: { icon: React.ElementType, title: string, description: string, href: string }) => (
   <a className="block p-6 bg-white rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl hover:border-indigo-300 transition-all duration-300 transform hover:-translate-y-1" href={href}>
     <Icon className="w-10 h-10 text-indigo-600 mb-3" />
@@ -56,6 +53,21 @@ const ActionCard = ({ icon: Icon, title, description, href }: { icon: React.Elem
     <p className="text-sm text-gray-600">{description}</p>
   </a>
 );
+
+const ResultCard = ({ item }: { item: ResultItem }) => (
+  <div className="p-6 bg-white rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300">
+    <div className="flex items-start justify-between mb-3">
+      <h3 className="text-xl font-semibold text-gray-900 flex-1">{item.title}</h3>
+      <span className="text-xs text-gray-500 ml-4">{item.date}</span>
+    </div>
+    <p className="text-gray-700 mb-4">{item.snippet}</p>
+    <div className="flex items-center justify-between">
+      <span className="text-sm font-medium text-indigo-600">{item.source}</span>
+      <a href={item.url} className="text-sm text-indigo-600 hover:text-indigo-800 hover:underline">View Source →</a>
+    </div>
+  </div>
+);
+
 // --- Main Dashboard Page ---
 export default function DashboardPage() {
   const { data: session, status } = useSession();
@@ -63,7 +75,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<ResultsData | null>(null);
   const [message, setMessage] = useState('');
-  // Optionally: Implement history, filters, etc. based on business logic
+  
   const handleSearch = () => {
     if (!query.trim()) {
       setMessage('Please enter a query.');
@@ -79,12 +91,15 @@ export default function DashboardPage() {
       setResults(mockResults);
     }, 1800);
   };
+  
   if (status === 'loading') {
     return <div className="flex justify-center items-center h-[calc(100vh-64px)]"><div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-indigo-500"></div></div>;
   }
+  
   if (status !== 'authenticated' || !session) {
     return <div className="p-10 text-center">Access Denied. Please sign in.</div>;
   }
+  
   return (
     <div className="flex min-h-[calc(100vh-64px)]">
       <DashboardSidebar />
@@ -151,6 +166,7 @@ export default function DashboardPage() {
     </div>
   );
 }
+
 // --- Mock Data ---
 const mockResults: ResultsData = {
   query: "risks of generative AI in finance",
@@ -181,6 +197,7 @@ const mockResults: ResultsData = {
     },
   ],
 };
+
 if (typeof document !== 'undefined') {
   document.head.appendChild(document.createElement('style')).innerHTML = `
     @keyframes fadeIn {
