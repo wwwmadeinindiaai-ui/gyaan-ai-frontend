@@ -1,37 +1,20 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { 
-    User, Mail, Key, CreditCard, ToggleRight, Settings, LogOut, Loader, Info, CheckCircle, XCircle, Bell
-} from 'lucide-react';
-
-// ===============================================
-// === FIREBASE IMPORTS AND SETUP (MANDATORY) ===
-// ===============================================
+import { Firestore, getFirestore, doc, onSnapshot, setDoc, collection, getDoc } from 'firebase/firestore';
+import { Auth, getAuth, signInWithCustomToken, signInAnonymously, signOut } from 'firebase/auth';
 import { initializeApp } from 'firebase/app';
-import { getAuth, signInWithCustomToken, signInAnonymously, signOut } from 'firebase/auth';
-import { 
-    getFirestore, doc, onSnapshot, setDoc, collection, getDoc
-} from 'firebase/firestore';
+// ...your other imports and icon imports
 
-// Define global variables, mandatory for Canvas environment
-const appId = process.env.NEXT_PUBLIC_APP_ID || 'default-app-id';
-
-const firebaseConfig = process.env.NEXT_PUBLIC_FIREBASE_CONFIG
-
-  ? JSON.parse(process.env.NEXT_PUBLIC_FIREBASE_CONFIG)
-
-  : {};
-
-const initialAuthToken = process.env.NEXT_PUBLIC_INITIAL_AUTH_TOKEN || undefined;
-
-// --- Initialize and Auth State ---
-
-import { Firestore, getFirestore } from 'firebase/firestore';
-import { Auth, getAuth } from 'firebase/auth';
-
+// Now do your variable initialization below:
 let db: Firestore | undefined;
 let auth: Auth | undefined;
+
+const appId = process.env.NEXT_PUBLIC_APP_ID || 'default-app-id';
+const firebaseConfig = process.env.NEXT_PUBLIC_FIREBASE_CONFIG
+  ? JSON.parse(process.env.NEXT_PUBLIC_FIREBASE_CONFIG)
+  : {};
+const initialAuthToken = process.env.NEXT_PUBLIC_INITIAL_AUTH_TOKEN || undefined;
 
 if (Object.keys(firebaseConfig).length) {
     const app = initializeApp(firebaseConfig);
