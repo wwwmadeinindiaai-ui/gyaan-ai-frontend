@@ -1,311 +1,186 @@
 'use client';
-import { useState, useEffect } from 'react';
+
+import React, { useState, useEffect } from 'react';
+import { Search, BookOpen, Settings, Download, Clipboard, ArrowRight, Clock, LayoutDashboard, Users, Zap, Globe, HardDrive } from 'lucide-react';
 import { useSession } from 'next-auth/react';
-import { SearchHistory, getSearchHistory, saveSearchHistory } from '@/lib/firestore-helpers';
 import EnhancedSearchBar from '../components/EnhancedSearchBar';
+import ResultCard from '../components/ResultCard';
 import ResultsGrid from '../components/ResultsGrid';
 import SummaryPanel from '../components/SummaryPanel';
+// You may also import ActionCard, DashboardSidebar, and PrimaryButton from components, or implement them here as needed.
 
-// NOTE: For Images mode to work, ensure UNSPLASH_ACCESS_KEY is set in your .env file
-// Example: UNSPLASH_ACCESS_KEY=your_actual_key_here
+// --- Sidebar ---
+const SidebarItem = ({ icon: Icon, label, href, active = false }) => (
+  <li>
+    <a href={href} className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition duration-200 ${active ? 'bg-indigo-100 text-indigo-700 font-semibold shadow-inner' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}>
+      <Icon className="w-5 h-5" />
+      <span>{label}</span>
+    </a>
+  </li>
+);
 
-// Types
-interface BaseResult {
-  id: string;
-  title: string;
-  content: string;
-  source: string;
-  timestamp: string | Date;
-  relevanceScore?: number;
-  videoUrl?: string;
-  imageUrl?: string;
-  imageAuthorName?: string;
-  imageAuthorUrl?: string;
-}
+const DashboardSidebar = () => (
+  <nav className="w-64 bg-white shadow-lg h-full fixed top-16 left-0 pt-6 px-4 hidden md:block">
+    <ul className="space-y-2">
+      <SidebarItem icon={LayoutDashboard} label="Dashboard" href="/dashboard" active />
+      <SidebarItem icon={Clock} label="Query History" href="/history" />
+      <SidebarItem icon={BookOpen} label="Article Builder" href="#" />
+      <SidebarItem icon={HardDrive} label="Data Sources" href="/profile" />
+      <SidebarItem icon={Users} label="Team Members" href="#" />
+    </ul>
+    <div className="absolute bottom-20 left-4 right-4 p-4 bg-indigo-50 rounded-lg text-center">
+      <Zap className="w-8 h-8 text-indigo-600 mx-auto mb-2" />
+      <p className="text-sm font-semibold text-indigo-800 mb-2">Upgrade to Pro</p>
+      <p className="text-xs text-indigo-700 mb-3">Unlock advanced AI models and unlimited reports.</p>
+      <a href="/pricing" className="text-xs font-bold text-indigo-600 hover:text-indigo-800 transition">View Plans &rarr;</a>
+    </div>
+  </nav>
+);
 
-type SearchMode = 'all' | 'academic' | 'news' | 'web' | 'images' | 'videos' | 'trending';
-type SearchResult = BaseResult;
+const ActionCard = ({ icon: Icon, title, description, href }) => (
+  <a href={href} className="block p-6 bg-white rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl hover:border-indigo-300 transition-all duration-300 transform hover:-translate-y-1">
+    <Icon className="w-10 h-10 text-indigo-600 mb-3" />
+    <h3 className="text-lg font-semibold text-gray-900 mb-1">{title}</h3>
+    <p className="text-sm text-gray-600">{description}</p>
+  </a>
+);
 
-export default function Dashboard() {
-  const { data: session } = useSession();
+// --- Main Dashboard Page ---
+export default function DashboardPage() {
+  const { data: session, status } = useSession();
   const [query, setQuery] = useState('');
-  const [searchHistory, setSearchHistory] = useState<SearchHistory[]>([]);
-  const [currentResults, setCurrentResults] = useState<SearchResult[] | null>(null);
-  const [isSearching, setIsSearching] = useState(false);
-  const [selectedFilter, setSelectedFilter] = useState<SearchMode>('all');
-  const [sortBy, setSortBy] = useState<'relevance' | 'date'>('relevance');
-  const [warning, setWarning] = useState<string | null>(null);
-  const [summary, setSummary] = useState<string | null>(null);
-  const [citations, setCitations] = useState<Array<{ source: string; url?: string }>>([]);
+  const [loading, setLoading] = useState(false);
+  const [results, setResults] = useState(null);
+  const [message, setMessage] = useState('');
+  // Optionally: Implement history, filters, etc. based on business logic
 
-  // Load search history
-  useEffect(() => {
-    const load = async () => {
-      if (!session?.user?.email) return;
-      try {
-        const history = await getSearchHistory(session.user.email, 10);
-        setSearchHistory(history);
-      } catch (e) {
-        console.error('Failed to load search history:', e);
-      }
-    };
-    load();
-  }, [session]);
-
-  // Helper to call backend search API
-  async function searchApi(mode: string, q: string, maxResults = 10): Promise<SearchResult[]> {
-    const body: any = {
-      query: q,
-      model: 'gpt-3.5-turbo',
-      maxResults,
-    };
-    // Set mode based on filter
-    if (mode !== 'all') {
-      body.mode = mode;
+  const handleSearch = () => {
+    if (!query.trim()) {
+      setMessage('Please enter a query.');
+      return;
     }
-    const res = await fetch('/api/search', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) {
-      throw new Error(`Search API error: ${res.status}`);
-    }
-    const data = await res.json();
-    return data.results || [];
+    setLoading(true);
+    setResults(null);
+    setMessage('');
+    // Simulate API call
+    setTimeout(() => {
+      setLoading(false);
+      setMessage(`Showing ${mockResults.data.length} synthesized results for: "${query}"`);
+      setResults(mockResults);
+    }, 1800);
+  };
+  if (status === 'loading') {
+    return <div className="flex justify-center items-center h-[calc(100vh-64px)]"><div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-indigo-500"></div></div>;
   }
-
-  async function handleSearch(searchQuery?: string, filter?: string) {
-    // Use the provided searchQuery or fall back to the query state
-    const q = searchQuery || query;
-    // Use the provided filter or fall back to selectedFilter state
-    const mode = filter || selectedFilter;
-    
-    if (!q.trim()) return;
-    
-    setIsSearching(true);
-    setCurrentResults(null);
-    setWarning(null); // Clear any previous warnings
-    setSummary(null); // Clear previous summary
-    setCitations([]); // Clear previous citations
-    
-    try {
-      let results: SearchResult[] = [];
-      // Use mode to determine which API call to make
-      // This ensures the selected mode is used for the search
-      if (mode === 'all') {
-        results = await searchApi('all', q, 10);
-      } else if (mode === 'academic') {
-        results = await searchApi('academic', q, 10);
-      } else if (mode === 'images') {
-        // Images mode with error/warning handling
-        try {
-          results = await searchApi('images', q, 12);
-          
-          // Check if results are empty - could indicate missing API key or no results
-          if (!results || results.length === 0) {
-            setWarning('No images found. Please ensure UNSPLASH_ACCESS_KEY is configured in your .env file, or try a different search term.');
-          }
-        } catch (e: any) {
-          console.error('Image search error:', e);
-          setWarning('Image search failed. Please check that UNSPLASH_ACCESS_KEY is set in your .env file and the API is accessible.');
-          results = [];
-        }
-      } else if (mode === 'videos') {
-        results = await searchApi('videos', q, 10);
-      } else if (mode === 'news') {
-        results = await searchApi('news', q, 10);
-      } else if (mode === 'web') {
-        results = await searchApi('web', q, 10);
-      } else if (mode === 'trending') {
-        results = await searchApi('trending', q, 10);
-      }
-      
-      setCurrentResults(results);
-      
-      // Extract summary and citations from backend response if available
-      // The backend may return summary/citations in the response object
-      // This is an additive UI layer that displays data if present
-      if (results && results.length > 0) {
-        // Generate summary from results (can be enhanced to use backend summary if available)
-        const summaryText = `Found ${results.length} ${mode} results for "${q}". ${results[0]?.content?.substring(0, 150) || ''}...`;
-        setSummary(summaryText);
-        
-        // Extract citations from results
-        const extractedCitations = results.slice(0, 5).map(r => ({
-          source: r.source,
-          url: r.videoUrl || r.imageUrl || undefined
-        }));
-        setCitations(extractedCitations);
-      }
-      
-      // Save to history
-      if (session?.user?.email && results.length > 0) {
-        try {
-          await saveSearchHistory(session.user.email, {
-            query: q,
-            mode: mode as SearchMode,
-            results: results,
-          });
-        } catch (e) {
-          console.error('Failed to save search history:', e);
-        }
-      }
-    } catch (e) {
-      console.error('Search failed:', e);
-      setWarning('Search failed. Please try again.');
-      setCurrentResults([]);
-    } finally {
-      setIsSearching(false);
-    }
+  if (status !== 'authenticated' || !session) {
+    return <div className="p-10 text-center"><p>Access Denied. Please sign in.</p></div>;
   }
-
-  // Filter results based on selected mode for display
-  const displayResults = currentResults;
-
-  // Extract query strings from search history for suggestions
-  const searchHistoryQueries = searchHistory.map(item => item.query);
-
-  // Sample trending searches (can be fetched from API in production)
-  const trendingSearches = [
-    'Artificial Intelligence trends 2025',
-    'Climate change solutions',
-    'Latest technology news',
-  ];
-
-  // Transform results for ResultCard component
-  const transformedResults = displayResults?.map(result => ({
-    id: result.id,
-    title: result.title,
-    description: result.content,
-    metadata: {
-      source: result.source,
-      ...(result.relevanceScore && { relevance: `${result.relevanceScore}%` }),
-      ...(result.videoUrl && { 'Video URL': result.videoUrl }),
-      ...(result.imageUrl && { 'Image': result.imageUrl }),
-      ...(result.imageAuthorName && { 'Photo by': result.imageAuthorName }),
-    },
-  })) || [];
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">Dashboard</h1>
-        
-        {/* Enhanced Search Section */}
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
-          {/* EnhancedSearchBar Component - New modular component */}
-          <div className="mb-4">
-            <EnhancedSearchBar
-              onSearch={handleSearch}
-              placeholder="Search the web..."
-              searchHistory={searchHistoryQueries}
-              trendingSearches={trendingSearches}
-              currentFilter={selectedFilter}
-              isLoading={isSearching}
-              className=""
-            />
+    <div className="flex min-h-[calc(100vh-64px)]">
+      <DashboardSidebar />
+      {/* Main Content Area */}
+      <main className="flex-1 md:ml-64 bg-gray-50 p-6 sm:p-10">
+        <div className="max-w-5xl mx-auto">
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">Welcome, {session.user.name.split(' ')[0]}</h1>
+          <p className="text-xl text-gray-600 mb-8">What knowledge will you uncover today?</p>
+          {/* Quick Actions Grid */}
+          {!results && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+              <ActionCard icon={BookOpen} title="New Article" description="Start a new report from scratch." href="#" />
+              <ActionCard icon={Clock} title="View History" description="Review your past queries and reports." href="/history" />
+              <ActionCard icon={Settings} title="Manage Preferences" description="Adjust sources and account settings." href="/profile" />
+            </div>
+          )}
+          {/* Search Bar */}
+          <div className="sticky top-20 z-10 bg-gray-50/80 backdrop-blur-sm py-4 mb-6">
+            <div className="relative flex items-center">
+              <input
+                type="text"
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                placeholder="Ask Gyaan AI anything... (e.g., 'What are the risks of deploying generative AI in finance?')"
+                className="w-full p-5 pr-40 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition shadow-lg text-lg"
+                disabled={loading}
+                onKeyDown={e => e.key === 'Enter' && handleSearch()}
+              />
+              <div className="absolute right-3">
+                <button
+                  onClick={handleSearch}
+                  disabled={loading}
+                  className="px-5 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-lg shadow-indigo-500/50 text-base flex items-center"
+                >
+                  {loading ? (
+                    <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white"></div>
+                  ) : (
+                    <Search className="w-5 h-5" />
+                  )}
+                  <span className="ml-2 hidden sm:inline">{loading ? 'Searching...' : 'Query AI'}</span>
+                </button>
+              </div>
+            </div>
+            <p className={`mt-2 text-sm text-left ${results ? 'text-green-600 font-medium' : 'text-gray-500'}`}>{message || 'Your AI research assistant is ready.'}</p>
           </div>
-          
-          {/* Original Filter Buttons - Preserved from old implementation */}
-          <div className="flex gap-2 flex-wrap">
-            {(['all', 'academic', 'news', 'web', 'images', 'videos', 'trending'] as SearchMode[]).map((mode) => (
-              <button
-                key={mode}
-                onClick={() => setSelectedFilter(mode)}
-                className={`px-4 py-2 rounded-lg capitalize transition-colors ${
-                  selectedFilter === mode
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
-              >
-                {mode}
-              </button>
-            ))}
-          </div>
+          {/* Results Display */}
+          {results && (
+            <div className="mt-4 animate-fadeIn">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-2xl font-semibold text-gray-800">Intelligent Synthesis Results</h2>
+                <button className="bg-gray-700 hover:bg-gray-800 text-white rounded-xl px-4 py-2 flex items-center">
+                  <Download className="w-4 h-4 mr-2" /> Export to PDF
+                </button>
+              </div>
+              <div className="space-y-6">
+                {results.data.map((item) => (
+                  <ResultCard key={item.id} item={item} />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
-        
-        {/* Warning/Error Messages */}
-        {warning && (
-          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <p className="text-sm text-yellow-700">{warning}</p>
-              </div>
-            </div>
-          </div>
-        )}
-        
-        {/* SummaryPanel Component - New additive UI layer */}
-        {summary && (
-          <SummaryPanel
-            summary={summary}
-            citations={citations}
-            isLoading={isSearching}
-          />
-        )}
-        
-        {/* Results Section - Now using ResultsGrid component */}
-        {displayResults && (
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold text-gray-900">
-                Results ({displayResults.length}) - Mode: {selectedFilter}
-              </h2>
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as 'relevance' | 'date')}
-                className="px-3 py-1 border border-gray-300 rounded-lg"
-              >
-                <option value="relevance">Sort by Relevance</option>
-                <option value="date">Sort by Date</option>
-              </select>
-            </div>
-            
-            {/* ResultsGrid Component - New modular UI layer */}
-            <ResultsGrid
-              results={transformedResults}
-              onResultClick={(result) => {
-                console.log('Result clicked:', result);
-              }}
-              emptyMessage="No results found."
-            />
-          </div>
-        )}
-        
-        {/* Search History */}
-        {searchHistory.length > 0 && (
-          <div className="bg-white rounded-lg shadow p-6 mt-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Recent Searches</h2>
-            <div className="space-y-2">
-              {searchHistory.map((item, idx) => (
-                <div key={idx} className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg">
-                  <div>
-                    <p className="font-medium text-gray-900">{item.query}</p>
-                    <p className="text-sm text-gray-500">
-                      {item.mode} · {new Date(item.timestamp).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => {
-                      setQuery(item.query);
-                      setSelectedFilter(item.mode as SearchMode);
-                    }}
-                    className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                  >
-                    Load
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
+      </main>
     </div>
   );
+}
+
+// --- Mock Data ---
+const mockResults = {
+  query: "risks of generative AI in finance",
+  data: [
+    { 
+      id: 1, 
+      title: "Analysis of AI-Driven Market Manipulation", 
+      snippet: "Generative AI could be used to create sophisticated, automated disinformation campaigns, influencing market sentiment and causing flash crashes. Regulatory bodies are behind the curve.", 
+      source: "Financial Times", 
+      url: "#", 
+      date: "Nov 3, 2025" 
+    },
+    { 
+      id: 2, 
+      title: "Internal Memo: Q4 AI Risk Assessment (Confidential)", 
+      snippet: "Our internal models show a 35% increase in 'model hallucination' risk when generative AI is applied to quarterly earnings report summaries. Recommending human-in-the-loop verification.", 
+      source: "Internal Knowledge Base", 
+      url: "#",
+      date: "Oct 30, 2025" 
+    },
+    { 
+      id: 3, 
+      title: "SEC Advisory on AI Model GRC (Governance, Risk, Compliance)", 
+      snippet: "The SEC has issued new guidance indicating that public companies may be liable for 'materially misleading' statements generated by AI, even if unintentional.", 
+      source: "SEC.gov", 
+      url: "#",
+      date: "Nov 1, 2025" 
+    },
+  ],
+};
+
+if (typeof document !== 'undefined') {
+  document.head.appendChild(document.createElement('style')).innerHTML = `
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fadeIn {
+      animation: fadeIn 0.5s ease-out;
+    }
+  `;
 }
