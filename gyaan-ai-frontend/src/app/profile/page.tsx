@@ -15,9 +15,15 @@ import {
 } from 'firebase/firestore';
 
 // Define global variables, mandatory for Canvas environment
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : undefined;
+const appId = process.env.NEXT_PUBLIC_APP_ID || 'default-app-id';
+
+const firebaseConfig = process.env.NEXT_PUBLIC_FIREBASE_CONFIG
+
+  ? JSON.parse(process.env.NEXT_PUBLIC_FIREBASE_CONFIG)
+
+  : {};
+
+const initialAuthToken = process.env.NEXT_PUBLIC_INITIAL_AUTH_TOKEN || undefined;
 
 // --- Initialize and Auth State ---
 let db, auth;
