@@ -6,6 +6,22 @@ import EnhancedSearchBar from '../components/EnhancedSearchBar';
 import ResultCard from '../components/ResultCard';
 import ResultsGrid from '../components/ResultsGrid';
 import SummaryPanel from '../components/SummaryPanel';
+
+// Type definitions
+type ResultItem = {
+  id: number;
+  title: string;
+  snippet: string;
+  source: string;
+  url: string;
+  date: string;
+};
+
+type ResultsData = {
+  query: string;
+  data: ResultItem[];
+};
+
 // You may also import ActionCard, DashboardSidebar, and PrimaryButton from components, or implement them here as needed.
 // --- Sidebar ---
 const SidebarItem = ({ icon: Icon, label, href, active = false }: { icon: React.ElementType, label: string, href: string, active?: boolean }) => (
@@ -45,7 +61,7 @@ export default function DashboardPage() {
   const { data: session, status } = useSession();
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState(null);
+  const [results, setResults] = useState<ResultsData | null>(null);
   const [message, setMessage] = useState('');
   // Optionally: Implement history, filters, etc. based on business logic
   const handleSearch = () => {
@@ -136,7 +152,7 @@ export default function DashboardPage() {
   );
 }
 // --- Mock Data ---
-const mockResults = {
+const mockResults: ResultsData = {
   query: "risks of generative AI in finance",
   data: [
     { 
