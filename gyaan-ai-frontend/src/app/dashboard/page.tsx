@@ -180,7 +180,6 @@ export default function DashboardPage() {
   );
 }
 
-
 if (typeof document !== 'undefined') {
   document.head.appendChild(document.createElement('style')).innerHTML = `
     @keyframes fadeIn {
