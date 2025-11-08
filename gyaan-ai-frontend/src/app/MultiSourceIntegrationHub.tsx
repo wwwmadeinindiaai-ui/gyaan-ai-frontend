@@ -294,7 +294,7 @@ const EditModal: React.FC<EditModalProps> = ({ source, onClose, onSave }) => {
                                 isSaving ? 'bg-blue-400' : 'bg-blue-600 hover:bg-blue-700'
                             }`}
                         >
-                            {isSaving ? 'Saving...' : 'Save Changes'}
+                            {isSaving ? 'Save Changes' : 'Save Changes'}
                         </button>
                     </div>
                 </form>
@@ -318,6 +318,9 @@ const MultiSourceIntegrationHub: React.FC = () => {
   const [notification, setNotification] = useState<Notification | null>(null);
   
   const [editingSource, setEditingSource] = useState<DataSource | null>(null);
+  
+  // NEW: State for the service filter
+  const [serviceFilter, setServiceFilter] = useState<ExternalService | 'all'>('all');
 
   // Function to show and hide notifications automatically
   const showNotification = (message: string, type: 'success' | 'error') => {
@@ -510,6 +513,15 @@ const MultiSourceIntegrationHub: React.FC = () => {
     }
   };
 
+  // Memoized filter logic
+  const filteredDataSources = useMemo(() => {
+    if (serviceFilter === 'all') {
+      return dataSources;
+    }
+    return dataSources.filter(source => source.config.service === serviceFilter);
+  }, [dataSources, serviceFilter]);
+
+
   // Helper to format last sync time
   const formatTime = (timestamp: number) => {
     return new Date(timestamp).toLocaleTimeString();
@@ -575,16 +587,33 @@ const MultiSourceIntegrationHub: React.FC = () => {
         </header>
 
         <main className="bg-white p-6 rounded-xl shadow-2xl">
-          <div className="flex justify-between items-center mb-6 border-b pb-4">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 border-b pb-4 space-y-4 md:space-y-0">
             <h2 className="text-xl font-semibold text-gray-800">
-              Connected Data Sources ({dataSources.length})
+              Connected Data Sources ({filteredDataSources.length} of {dataSources.length} Shown)
             </h2>
-            <button
-              onClick={addMockDataSource}
-              className="px-4 py-2 bg-blue-600 text-white font-medium rounded-lg shadow-md hover:bg-blue-700 transition duration-150 ease-in-out transform hover:scale-[1.01] focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              + Add Mock Integration
-            </button>
+            <div className="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-4 w-full md:w-auto">
+              {/* NEW: Service Filter Dropdown */}
+              <select
+                  value={serviceFilter}
+                  onChange={(e) => setServiceFilter(e.target.value as ExternalService | 'all')}
+                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 bg-white shadow-sm w-full sm:w-auto"
+              >
+                  <option value="all">All Services ({dataSources.length})</option>
+                  <option disabled>──────</option>
+                  {EXTERNAL_SERVICES.map(service => (
+                      <option key={service} value={service}>
+                          {service}
+                      </option>
+                  ))}
+              </select>
+
+              <button
+                onClick={addMockDataSource}
+                className="px-4 py-2 bg-blue-600 text-white font-medium rounded-lg shadow-md hover:bg-blue-700 transition duration-150 ease-in-out transform hover:scale-[1.01] focus:outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-auto"
+              >
+                + Add Mock Integration
+              </button>
+            </div>
           </div>
 
           <div className="space-y-4">
@@ -592,8 +621,12 @@ const MultiSourceIntegrationHub: React.FC = () => {
               <div className="text-center p-8 bg-blue-50 border border-blue-200 rounded-xl">
                 <p className="text-gray-600">No data sources connected yet. Click "Add Mock Integration" to populate the list!</p>
               </div>
+            ) : filteredDataSources.length === 0 ? (
+               <div className="text-center p-8 bg-yellow-50 border border-yellow-200 rounded-xl">
+                <p className="text-gray-600">No sources found matching the filter: **{serviceFilter}**.</p>
+              </div>
             ) : (
-              dataSources.map((source) => (
+              filteredDataSources.map((source) => (
                 <div 
                   key={source.id} 
                   className="p-5 border border-gray-200 rounded-xl bg-white shadow-sm hover:shadow-md transition duration-200 flex flex-col md:flex-row justify-between items-start md:items-center"
