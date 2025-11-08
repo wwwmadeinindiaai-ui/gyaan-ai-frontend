@@ -76,11 +76,12 @@ export default function DashboardPage() {
   const [results, setResults] = useState<ResultsData | null>(null);
   const [message, setMessage] = useState('');
   
-  const handleSearch = () => {
+  const handleSearch = async () => {
     if (!query.trim()) {
       setMessage('Please enter a query.');
       return;
     }
+        setLoading(true);
     try {
       const response = await fetch('/api/query/synthesize', {
         method: 'POST',
