@@ -1,5 +1,6 @@
 // src/app/api/query/synthesize/route.ts
 // API endpoint for query synthesis
+// Trigger redeploy to load GEMINI_API_KEY environment variable
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
