@@ -1,12 +1,19 @@
+// --- FIX: Declare global variables for TypeScript to recognize the Canvas injected values ---
+// These variables are injected by the execution environment but must be declared for TS.
+declare const __app_id: string | undefined;
+declare const __firebase_config: string | undefined;
+declare const __initial_auth_token: string | null | undefined;
+// -----------------------------------------------------------------------------------------
+
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { initializeApp } from 'firebase/app';
 import { 
   getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, Auth, User
 } from 'firebase/auth';
 import { 
-  getFirestore, Firestore, collection, onSnapshot, query, setDoc, doc, DocumentData, Unsubscribe
+  getFirestore, Firestore, collection, onSnapshot, query, setDoc, doc, Unsubscribe
 } from 'firebase/firestore';
 
 // --- Type Definitions (Extracted from user's implied types/structure) ---
@@ -40,7 +47,7 @@ const INITIAL_FIREBASE_STATE: FirebaseState = {
 // --- Component Logic ---
 
 const MultiSourceIntegrationHub: React.FC = () => {
-  // Global variables provided by the Canvas environment
+  // Global variables provided by the Canvas environment (now recognized by TypeScript)
   const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
   const firebaseConfigString = typeof __firebase_config !== 'undefined' ? __firebase_config : '{}';
   const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
