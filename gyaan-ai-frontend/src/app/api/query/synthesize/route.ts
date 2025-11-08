@@ -11,7 +11,7 @@ import { QueryRequest, QueryResponse } from '@/lib/types/query';
  * POST /api/query/synthesize
  * Synthesize a user query using AI and return synthesis with citations
  */
-export async function POST(request: NextRequest): Promise<NextResponse<QueryResponse>> {
+export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     // Verify user session
     const session = await getServerSession(authOptions);
