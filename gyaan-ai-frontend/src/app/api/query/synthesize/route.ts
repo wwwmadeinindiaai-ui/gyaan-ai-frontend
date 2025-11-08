@@ -54,8 +54,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json(
       {
         query: result.query,
-        data: result.data,
-      },
+        data: result.citations.map((citation, index) => ({
+          id: index + 1,
+          title: citation.title || citation.source,
+          snippet: result.synthesis.substring(0, 200) + '...',
+          source: citation.source,
+          url: citation.url,
+          date: new Date(result.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+        })),      },
       { status: 200 }
     );;
   } catch (error) {
