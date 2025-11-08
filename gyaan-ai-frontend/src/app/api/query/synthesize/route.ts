@@ -57,7 +57,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<QueryResp
         data: result.data,
       },
       { status: 200 }
-    ););
+    );;
   } catch (error) {
     console.error('[API] Error in query synthesis:', error);
     const errorMessage = error instanceof Error ? error.message : 'Internal server error';
