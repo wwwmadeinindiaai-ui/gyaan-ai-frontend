@@ -48,8 +48,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<QueryResp
     console.log('[API] Query:', body.query);
 
     // Process query through QueryService
-    const result = await QueryService.synthesizeQuery(body, session.user.id || session.user.email);
-
+    const result = await QueryService.synthesizeQuery(body, (session.user.id ?? session.user.email) || '');
     console.log('[API] Query synthesized successfully in', result.processingTimeMs, 'ms');
 
     return NextResponse.json(
