@@ -50,15 +50,14 @@ export async function POST(request: NextRequest): Promise<NextResponse<QueryResp
     // Process query through QueryService
     const result = await QueryService.synthesizeQuery(body, (session.user.id ?? session.user.email) || '');
     console.log('[API] Query synthesized successfully in', result.processingTimeMs, 'ms');
-
+  // Return only query and data array (format expected by dashboard)
     return NextResponse.json(
       {
-        success: true,
-        data: result,
-        timestamp: new Date(),
+        query: result.query,
+        data: result.data,
       },
       { status: 200 }
-    );
+    ););
   } catch (error) {
     console.error('[API] Error in query synthesis:', error);
     const errorMessage = error instanceof Error ? error.message : 'Internal server error';
