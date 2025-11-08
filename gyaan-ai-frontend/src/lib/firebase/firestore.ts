@@ -17,8 +17,7 @@ export function getQueryHistoryCollection() {
 /**
  * Save a query history record to Firestore
  */
-export async function saveQueryHistory(record: Omit<QueryHistoryRecord, 'id'>): Promise<string> {
-  try {
+export async function saveQueryHistory(record: Omit<QueryHistoryRecord, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {  try {
     const docRef = await addDoc(getQueryHistoryCollection(), {
       ...record,
       createdAt: new Date(),
