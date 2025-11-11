@@ -83,6 +83,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         synthesis: result.synthesis,
         confidence: result.confidence,
         processingTimeMs: result.processingTimeMs,
+        privateContext: result.privateContext,
       },
       { status: 200 }
     );
