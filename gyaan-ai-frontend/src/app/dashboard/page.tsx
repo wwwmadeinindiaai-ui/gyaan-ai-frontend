@@ -75,7 +75,24 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<ResultsData | null>(null);
   const [message, setMessage] = useState('');
-  
+    const [sourceClassification, setSourceClassification] = useState(null);
+
+
+    // Helper function for classification badge styling
+  const getClassificationStyles = (classification) => {
+    switch (classification) {
+      case 'mixed':
+        return { bg: 'bg-purple-100', text: 'text-purple-800', label: 'Mixed Synthesis (Internal + External)' };
+      case 'private':
+        return { bg: 'bg-blue-100', text: 'text-blue-800', label: 'Private (Internal) Only' };
+      case 'public':
+        return { bg: 'bg-green-100', text: 'text-green-800', label: 'Public (External) Only' };
+      case 'core':
+        return { bg: 'bg-gray-100', text: 'text-gray-800', label: 'Core Model Knowledge Only' };
+      default:
+        return { bg: 'bg-gray-100', text: 'text-gray-600', label: 'Unknown' };
+    }
+  };
   const handleSearch = async () => {
     if (!query.trim()) {
       setMessage('Please enter a query.');
@@ -85,6 +102,7 @@ export default function DashboardPage() {
     setLoading(true);
     setResults(null);
     setMessage('');
+        setSourceClassification(null);
     
     try {
       const response = await fetch('/api/query/synthesize', {
@@ -100,6 +118,20 @@ export default function DashboardPage() {
       const data = await response.json();
       setMessage(`Showing ${data.data?.length || 0} synthesized results for: "${query}"`);
       setResults(data);
+
+            // Determine classification
+      const privateDataUsed = data.privateContext && data.privateContext.length > 0;
+      const publicDataUsed = data.data && data.data.length > 0;
+      
+      if (privateDataUsed && publicDataUsed) {
+        setSourceClassification('mixed');
+      } else if (privateDataUsed) {
+        setSourceClassification('private');
+      } else if (publicDataUsed) {
+        setSourceClassification('public');
+      } else {
+        setSourceClassification('core');
+      }
     } catch (error) {
       setMessage('Error fetching results. Please try again.');
       console.error('Search error:', error);
