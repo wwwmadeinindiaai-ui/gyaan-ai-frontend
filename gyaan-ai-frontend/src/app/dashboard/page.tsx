@@ -79,7 +79,7 @@ export default function DashboardPage() {
 
 
     // Helper function for classification badge styling
-  const getClassificationStyles = (classification) => {
+  const getClassificationStyles = (classification: string) => {
     switch (classification) {
       case 'mixed':
         return { bg: 'bg-purple-100', text: 'text-purple-800', label: 'Mixed Synthesis (Internal + External)' };
