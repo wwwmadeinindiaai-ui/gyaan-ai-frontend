@@ -1,6 +1,5 @@
 // src/app/api/query/synthesize/route.ts
-// API endpoint for query synthesis
-// Trigger redeploy to load GEMINI_API_KEY environment variable
+// API endpoint for query synthesis with Google Search Grounding
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
@@ -10,7 +9,7 @@ import { QueryRequest, QueryResponse } from '@/lib/types/query';
 
 /**
  * POST /api/query/synthesize
- * Synthesize a user query using AI and return synthesis with citations
+ * Synthesize a user query using AI with Google Search Grounding and return results with real citations
  */
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
@@ -48,23 +47,45 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     console.log('[API] Processing query synthesis for user:', session.user.email);
     console.log('[API] Query:', body.query);
 
-    // Process query through QueryService
-    const result = await QueryService.synthesizeQuery(body, (session.user.id ?? session.user.email) || '');
+    // Process query through QueryService (with Google Search Grounding)
+    const result = await QueryService.synthesizeQuery(
+      body,
+      (session.user.id ?? session.user.email) || ''
+    );
+
     console.log('[API] Query synthesized successfully in', result.processingTimeMs, 'ms');
-  // Return only query and data array (format expected by dashboard)
+    console.log('[API] Citations found:', result.citations.length);
+
+    // Transform response to match dashboard expectations
+    // Dashboard expects: { query: string, data: ResultItem[] }
+    // Where ResultItem = { id, title, snippet, source, url, date }
+    
+    const transformedData = result.citations.map((citation, index) => ({
+      id: index + 1,
+      title: citation.title || citation.source,
+      snippet: result.synthesis.substring(index * 200, (index + 1) * 200) || 
+               'View the full synthesis for complete context.',
+      source: citation.source,
+      url: citation.url,
+      date: new Date(result.timestamp).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      }),
+    }));
+
+    // Return transformed data for dashboard compatibility
     return NextResponse.json(
       {
         query: result.query,
-        data: result.citations.map((citation, index) => ({
-          id: index + 1,
-          title: citation.title || citation.source,
-          snippet: result.synthesis.substring(0, 200) + '...',
-          source: citation.source,
-          url: citation.url,
-          date: new Date(result.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-        })),      },
+        data: transformedData,
+        // Also include the full synthesis for potential future use
+        synthesis: result.synthesis,
+        confidence: result.confidence,
+        processingTimeMs: result.processingTimeMs,
+      },
       { status: 200 }
-    );;
+    );
   } catch (error) {
     console.error('[API] Error in query synthesis:', error);
     const errorMessage = error instanceof Error ? error.message : 'Internal server error';
