@@ -202,6 +202,17 @@ export default function DashboardPage() {
                   <Download className="w-4 h-4 mr-2" /> Export to PDF
                 </button>
               </div>
+                            {/* Classification Badge */}
+                            {sourceClassification && (
+                              <div className="mb-4">
+                                                  <span className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold ${getClassificationStyles(sourceClassification).bg} ${getClassificationStyles(sourceClassification).text}`}>
+                                                                        {sourceClassification === 'mixed' && <Globe className="w-4 h-4 mr-2" />}
+                                                                        {sourceClassification === 'private' && <HardDrive className="w-4 h-4 mr-2" />}
+                                                                        {sourceClassification === 'public' && <Globe className="w-4 h-4 mr-2" />}
+                                                                        {getClassificationStyles(sourceClassification).label}
+                                                                      </span>
+                                                </div>
+                            )}
               <div className="space-y-6">
                 {results.data.map((item) => (
                   <ResultCard key={item.id} item={item} />
