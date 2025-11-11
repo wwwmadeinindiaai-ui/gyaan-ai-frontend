@@ -75,7 +75,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<ResultsData | null>(null);
   const [message, setMessage] = useState('');
-    const [sourceClassification, setSourceClassification] = useState(null);
+    const [sourceClassification, setSourceClassification] =  = useState<'mixed' | 'private' | 'public' | 'core' | null>(null);
 
 
     // Helper function for classification badge styling
