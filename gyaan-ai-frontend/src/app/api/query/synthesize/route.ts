@@ -1,15 +1,190 @@
 // src/app/api/query/synthesize/route.ts
-// API endpoint for query synthesis with Google Search Grounding
+// API endpoint for query synthesis with Google Search Grounding + Private Data Integration
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import QueryService from '@/lib/services/query-service';
 import { QueryRequest, QueryResponse } from '@/lib/types/query';
+import { initializeApp, getApps, cert } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
+
+/**
+ * Initialize Firebase Admin SDK (server-side only)
+ */
+function getFirestoreAdmin() {
+  if (getApps().length === 0) {
+    const serviceAccount = JSON.parse(
+      process.env.FIREBASE_SERVICE_ACCOUNT || '{}'
+    );
+    
+    initializeApp({
+      credential: cert(serviceAccount),
+    });
+  }
+  
+  return getFirestore();
+}
+
+/**
+ * Fetch real data from Wikipedia API
+ */
+async function fetchFromWikipedia(query: string, endpoint: string): Promise<string> {
+  try {
+    const searchUrl = `${endpoint}?action=query&list=search&srsearch=${encodeURIComponent(query)}&format=json&origin=*`;
+    const response = await fetch(searchUrl);
+    
+    if (!response.ok) {
+      console.warn(`[Wikipedia] API call failed: ${response.status}`);
+      return '';
+    }
+    
+    const data = await response.json();
+    const searchResults = data.query?.search || [];
+    
+    if (searchResults.length === 0) {
+      return '';
+    }
+    
+    // Format results into text
+    const formattedResults = searchResults.slice(0, 3).map((result: any, index: number) => {
+      return `${index + 1}. ${result.title}: ${result.snippet.replace(/<[^>]*>/g, '')}`;
+    }).join('\\n');
+    
+    return `Wikipedia Search Results:\\n${formattedResults}`;
+  } catch (error) {
+    console.error('[Wikipedia] Error fetching data:', error);
+    return '';
+  }
+}
+
+/**
+ * Fetch real data from a custom API endpoint
+ */
+async function fetchFromCustomAPI(query: string, endpoint: string, config: any): Promise<string> {
+  try {
+    const headers: any = {
+      'Content-Type': 'application/json',
+    };
+    
+    // Add API key if provided
+    if (config.apiKey) {
+      headers['Authorization'] = `Bearer ${config.apiKey}`;
+    }
+    
+    const response = await fetch(endpoint, {
+      method: config.method || 'GET',
+      headers,
+      body: config.method === 'POST' ? JSON.stringify({ query }) : undefined,
+    });
+    
+    if (!response.ok) {
+      console.warn(`[Custom API] API call failed: ${response.status}`);
+      return '';
+    }
+    
+    const data = await response.json();
+    return JSON.stringify(data, null, 2);
+  } catch (error) {
+    console.error('[Custom API] Error fetching data:', error);
+    return '';
+  }
+}
+
+/**
+ * Fetch real data from configured data source
+ */
+async function fetchRealDataFromSource(source: any, query: string): Promise<string> {
+  const { name, config } = source;
+  const service = config.service.toLowerCase();
+  
+  console.log(`[DataSource] Fetching real data from ${name} (${service})`);
+  
+  try {
+    // Wikipedia integration
+    if (service.includes('wikipedia')) {
+      const endpoint = config.endpoint || 'https://en.wikipedia.org/w/api.php';
+      const content = await fetchFromWikipedia(query, endpoint);
+      return content || `No results found from ${name}`;
+    }
+    
+    // Custom API integration
+    if (service.includes('api') || config.endpoint) {
+      const content = await fetchFromCustomAPI(query, config.endpoint, config);
+      return content || `No results from ${name}`;
+    }
+    
+    // Database integration (would require server-side proxy)
+    if (service.includes('database')) {
+      console.warn(`[DataSource] Database integration requires server-side implementation`);
+      return `Database source: ${name}. Direct database queries require additional configuration.`;
+    }
+    
+    // Fallback for unknown sources
+    console.warn(`[DataSource] Unknown service type: ${service}`);
+    return `Data source ${name} (${service}) configured but integration not yet implemented.`;
+    
+  } catch (error) {
+    console.error(`[DataSource] Error fetching from ${name}:`, error);
+    return `Error fetching data from ${name}`;
+  }
+}
+
+/**
+ * Retrieve and format content from user's active private data sources
+ * SERVER-SIDE ONLY - uses Firebase Admin SDK
+ */
+async function retrievePrivateDataContext(userId: string, query: string): Promise<string> {
+  try {
+    const db = getFirestoreAdmin();
+    const appId = process.env.NEXT_PUBLIC_APP_ID || 'default-app-id';
+    
+    // Fetch user's connected data sources
+    const datasourcesPath = `artifacts/${appId}/users/${userId}/datasources`;
+    const snapshot = await db.collection(datasourcesPath).get();
+
+    if (snapshot.empty) {
+      console.log('[PrivateData] No private sources found for user');
+      return '';
+    }
+
+    // Extract active sources
+    const sources: any[] = [];
+    snapshot.forEach((doc) => {
+      const data = doc.data();
+      if (data.status === 'active') {
+        sources.push({ id: doc.id, ...data });
+      }
+    });
+
+    if (sources.length === 0) {
+      console.log('[PrivateData] No active private sources');
+      return '';
+    }
+
+    console.log(`[PrivateData] Found ${sources.length} active sources:`, sources.map(s => s.name));
+
+    // Fetch REAL data from all active sources in parallel
+    const dataPromises = sources.map(async (source, index) => {
+      const content = await fetchRealDataFromSource(source, query);
+      return `[Source ${index + 1}: ${source.name} (${source.config.service})]\\n${content}`;
+    });
+
+    const privateContentArray = await Promise.all(dataPromises);
+    const privateContent = privateContentArray.join('\\n\\n');
+
+    console.log(`[PrivateData] Retrieved ${privateContent.length} chars of real data`);
+    return privateContent;
+
+  } catch (error) {
+    console.error('[PrivateData] Error retrieving private data:', error);
+    return '';
+  }
+}
 
 /**
  * POST /api/query/synthesize
- * Synthesize a user query using AI with Google Search Grounding and return results with real citations
+ * Synthesize a user query using AI with Google Search Grounding + Private Data
  */
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
@@ -47,24 +222,34 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     console.log('[API] Processing query synthesis for user:', session.user.email);
     console.log('[API] Query:', body.query);
 
-    // Process query through QueryService (with Google Search Grounding)
+    const userId = (session.user.id ?? session.user.email) || '';
+
+    // SERVER-SIDE: Fetch private data context using Firebase Admin SDK
+    let privateContext = '';
+    try {
+      privateContext = await retrievePrivateDataContext(userId, body.query);
+      console.log(`[API] Private context fetched: ${privateContext.length} chars`);
+    } catch (error) {
+      console.error('[API] Failed to fetch private context:', error);
+      // Continue without private context
+    }
+
+    // Process query through QueryService (with Google Search Grounding + Private Context)
     const result = await QueryService.synthesizeQuery(
       body,
-      (session.user.id ?? session.user.email) || ''
+      userId,
+      privateContext // Pass the fetched private context
     );
 
     console.log('[API] Query synthesized successfully in', result.processingTimeMs, 'ms');
     console.log('[API] Citations found:', result.citations.length);
 
     // Transform response to match dashboard expectations
-    // Dashboard expects: { query: string, data: ResultItem[] }
-    // Where ResultItem = { id, title, snippet, source, url, date }
-    
     const transformedData = result.citations.map((citation, index) => ({
       id: index + 1,
       title: citation.title || citation.source,
       snippet: result.synthesis.substring(index * 200, (index + 1) * 200) || 
-               'View the full synthesis for complete context.',
+        'View the full synthesis for complete context.',
       source: citation.source,
       url: citation.url,
       date: new Date(result.timestamp).toLocaleDateString('en-US', {
@@ -87,10 +272,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       },
       { status: 200 }
     );
+
   } catch (error) {
     console.error('[API] Error in query synthesis:', error);
     const errorMessage = error instanceof Error ? error.message : 'Internal server error';
-
+    
     return NextResponse.json(
       {
         success: false,
