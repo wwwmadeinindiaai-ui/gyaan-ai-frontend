@@ -7,7 +7,7 @@ import { getApps } from 'firebase/app';
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -15,7 +15,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id } = params;
+    const { id } = await context.params;
     if (!id) {
       return NextResponse.json({ error: 'ID is required' }, { status: 400 });
     }
@@ -30,7 +30,6 @@ export async function DELETE(
     const docPath = `artifacts/${appId}/users/${session.user.id}/datasources/${id}`;
     const docRef = doc(db, docPath);
 
-    // Check if document exists and belongs to user
     const docSnap = await getDoc(docRef);
     if (!docSnap.exists()) {
       return NextResponse.json({ error: 'Data source not found' }, { status: 404 });
@@ -46,7 +45,7 @@ export async function DELETE(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -54,8 +53,7 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id } = params;
-    // Test connection logic here
+    const { id } = await context.params;
     return NextResponse.json({ success: true, message: 'Connection test successful' }, { status: 200 });
   } catch (error) {
     console.error('[API] Error testing connection:', error);
