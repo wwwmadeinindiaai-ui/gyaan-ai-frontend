@@ -5,25 +5,41 @@ import { authOptions } from '@/lib/auth';
 import { getFirestore, collection, addDoc, query, where, getDocs, Timestamp } from 'firebase/firestore';
 import { initializeApp, getApps } from 'firebase/app';
 
+// Initialize Firebase Admin for server-side
+const getFirebaseApp = () => {
+  const apps = getApps();
+  if (apps.length > 0) {
+    return apps[0];
+  }
+  
+  const firebaseConfig = {
+    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  };
+  
+  return initializeApp(firebaseConfig);
+};
+
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
+    
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const apps = getApps();
-    if (apps.length === 0) {
-      return NextResponse.json({ error: 'Firebase not initialized' }, { status: 500 });
-    }
-
-    const db = getFirestore(apps[0]);
+    const app = getFirebaseApp();
+    const db = getFirestore(app);
     const appId = process.env.NEXT_PUBLIC_APP_ID || 'default-app-id';
     const datasourcesPath = `artifacts/${appId}/users/${session.user.id}/datasources`;
     const datasourcesRef = collection(db, datasourcesPath);
     const q = query(datasourcesRef);
     const snapshot = await getDocs(q);
-
+    
     const sources: any[] = [];
     snapshot.forEach((doc) => {
       sources.push({ id: doc.id, ...doc.data() });
@@ -39,6 +55,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
+    
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -50,12 +67,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    const apps = getApps();
-    if (apps.length === 0) {
-      return NextResponse.json({ error: 'Firebase not initialized' }, { status: 500 });
-    }
-
-    const db = getFirestore(apps[0]);
+    const app = getFirebaseApp();
+    const db = getFirestore(app);
     const appId = process.env.NEXT_PUBLIC_APP_ID || 'default-app-id';
     const datasourcesPath = `artifacts/${appId}/users/${session.user.id}/datasources`;
     const datasourcesRef = collection(db, datasourcesPath);
@@ -70,6 +83,7 @@ export async function POST(request: NextRequest) {
     };
 
     const docRef = await addDoc(datasourcesRef, newSource);
+
     return NextResponse.json({ id: docRef.id, ...newSource }, { status: 201 });
   } catch (error) {
     console.error('[API] Error adding data source:', error);
