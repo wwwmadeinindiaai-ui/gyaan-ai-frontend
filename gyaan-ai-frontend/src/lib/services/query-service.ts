@@ -1,198 +1,9 @@
 // src/lib/services/query-service.ts
 // Query & Synthesis Service with Multi-Source Integration (Private + Public)
+// Server-side compatible version - NO Firebase Client SDK
 
 import { QueryRequest, SynthesizedResult, Citation } from '@/lib/types/query';
 import { saveQueryHistory } from '@/lib/firebase/firestore';
-import { getFirestore, collection, query as firestoreQuery, getDocs } from 'firebase/firestore';
-import { initializeApp, getApps } from 'firebase/app';
-
-// Result item format expected by dashboard
-interface ResultItem {
-  id: number;
-  title: string;
-  snippet: string;
-  source: string;
-  url: string;
-  date: string;
-}
-
-// Data source interface
-interface DataSource {
-  id: string;
-  name: string;
-  type: string;
-  status: string;
-  config: {
-    service: string;
-    [key: string]: any;
-  };
-}
-
-/**
- * Fetch real data from Wikipedia API
- */
-async function fetchFromWikipedia(query: string, endpoint: string): Promise<string> {
-  try {
-    const searchUrl = `${endpoint}?action=query&list=search&srsearch=${encodeURIComponent(query)}&format=json&origin=*`;
-    const response = await fetch(searchUrl);
-    
-    if (!response.ok) {
-      console.warn(`[Wikipedia] API call failed: ${response.status}`);
-      return '';
-    }
-    
-    const data = await response.json();
-    const searchResults = data.query?.search || [];
-    
-    if (searchResults.length === 0) {
-      return '';
-    }
-    
-    // Format results into text
-    const formattedResults = searchResults.slice(0, 3).map((result: any, index: number) => {
-      return `${index + 1}. ${result.title}: ${result.snippet.replace(/<[^>]*>/g, '')}`;
-    }).join('\\n');
-    
-    return `Wikipedia Search Results:\\n${formattedResults}`;
-  } catch (error) {
-    console.error('[Wikipedia] Error fetching data:', error);
-    return '';
-  }
-}
-
-/**
- * Fetch real data from a custom API endpoint
- */
-async function fetchFromCustomAPI(query: string, endpoint: string, config: any): Promise<string> {
-  try {
-    const headers: any = {
-      'Content-Type': 'application/json',
-    };
-    
-    // Add API key if provided
-    if (config.apiKey) {
-      headers['Authorization'] = `Bearer ${config.apiKey}`;
-    }
-    
-    const response = await fetch(endpoint, {
-      method: config.method || 'GET',
-      headers,
-      body: config.method === 'POST' ? JSON.stringify({ query }) : undefined,
-    });
-    
-    if (!response.ok) {
-      console.warn(`[Custom API] API call failed: ${response.status}`);
-      return '';
-    }
-    
-    const data = await response.json();
-    return JSON.stringify(data, null, 2);
-  } catch (error) {
-    console.error('[Custom API] Error fetching data:', error);
-    return '';
-  }
-}
-
-/**
- * Fetch real data from configured data source
- * Replaces the simulated content generation with actual API calls
- */
-async function fetchRealDataFromSource(source: DataSource, query: string): Promise<string> {
-  const { name, config } = source;
-  const service = config.service.toLowerCase();
-  
-  console.log(`[DataSource] Fetching real data from ${name} (${service})`);
-  
-  try {
-    // Wikipedia integration
-    if (service.includes('wikipedia')) {
-      const endpoint = config.endpoint || 'https://en.wikipedia.org/w/api.php';
-      const content = await fetchFromWikipedia(query, endpoint);
-      return content || `No results found from ${name}`;
-    }
-    
-    // Custom API integration
-    if (service.includes('api') || config.endpoint) {
-      const content = await fetchFromCustomAPI(query, config.endpoint, config);
-      return content || `No results from ${name}`;
-    }
-    
-    // Database integration (would require server-side proxy)
-    if (service.includes('database')) {
-      console.warn(`[DataSource] Database integration requires server-side implementation`);
-      return `Database source: ${name}. Direct browser-side database queries not supported. Consider using an API proxy.`;
-    }
-    
-    // Fallback for unknown sources
-    console.warn(`[DataSource] Unknown service type: ${service}`);
-    return `Data source ${name} (${service}) configured but integration not yet implemented.`;
-    
-  } catch (error) {
-    console.error(`[DataSource] Error fetching from ${name}:`, error);
-    return `Error fetching data from ${name}`;
-  }
-}
-
-/**
- * Retrieve and format content from user's active private data sources
- * Now uses REAL API integration instead of simulated content
- */
-async function retrievePrivateDataContext(userId: string, query: string): Promise<string> {
-  try {
-    // Get Firebase instance
-    const apps = getApps();
-    if (apps.length === 0) {
-      console.warn('[PrivateData] Firebase not initialized');
-      return '';
-    }
-
-    const db = getFirestore(apps[0]);
-    const appId = process.env.NEXT_PUBLIC_APP_ID || 'default-app-id';
-    
-    // Fetch user's connected data sources
-    const datasourcesPath = `artifacts/${appId}/users/${userId}/datasources`;
-    const datasourcesRef = collection(db, datasourcesPath);
-    const q = firestoreQuery(datasourcesRef);
-    const snapshot = await getDocs(q);
-
-    if (snapshot.empty) {
-      console.log('[PrivateData] No private sources found for user');
-      return '';
-    }
-
-    // Extract active sources
-    const sources: DataSource[] = [];
-    snapshot.forEach((doc) => {
-      const data = doc.data() as Omit<DataSource, 'id'>;
-      if (data.status === 'active') {
-        sources.push({ id: doc.id, ...data });
-      }
-    });
-
-    if (sources.length === 0) {
-      console.log('[PrivateData] No active private sources');
-      return '';
-    }
-
-    console.log(`[PrivateData] Found ${sources.length} active sources:`, sources.map(s => s.name));
-
-    // Fetch REAL data from all active sources in parallel
-    const dataPromises = sources.map(async (source, index) => {
-      const content = await fetchRealDataFromSource(source, query);
-      return `[Source ${index + 1}: ${source.name} (${source.config.service})]\\n${content}`;
-    });
-
-    const privateContentArray = await Promise.all(dataPromises);
-    const privateContent = privateContentArray.join('\\n\\n');
-
-    console.log(`[PrivateData] Retrieved ${privateContent.length} chars of real data`);
-    return privateContent;
-
-  } catch (error) {
-    console.error('[PrivateData] Error retrieving private data:', error);
-    return '';
-  }
-}
 
 /**
  * Performs an API call with exponential backoff for retry mechanism.
@@ -266,10 +77,12 @@ class QueryService {
   /**
    * Real Gemini API integration with Multi-Source (Private + Public via Google Search)
    * Returns synthesis text and real citations from groundingMetadata
+   * 
+   * NOTE: Private context is now passed IN from the API route (server-side)
    */
   private static async synthesizeWithAI(
     query: string,
-    userId?: string
+    privateContext?: string
   ): Promise<{ synthesis: string; citations: Citation[]; privateContext?: string }> {
     console.log('[QueryService] Starting multi-source synthesis');
 
@@ -279,24 +92,17 @@ class QueryService {
         throw new Error('GEMINI_API_KEY is not configured');
       }
 
-      // Step 1: Retrieve REAL private data context
-      let privateContext = '';
-      if (userId) {
-        privateContext = await retrievePrivateDataContext(userId, query);
-        console.log(`[QueryService] Private context length: ${privateContext.length} chars`);
-      }
-
-      // Step 2: Build composite prompt
+      // Build composite prompt with provided private context
       let compositeQuery = query.trim();
       
-      if (privateContext) {
+      if (privateContext && privateContext.length > 0) {
         compositeQuery = `# USER QUERY:\\n${query}\\n\\n# PRIVATE DATA SOURCES (Real-time data from configured sources):\\n${privateContext}\\n\\n# INSTRUCTIONS:\\nSynthesize a comprehensive response by integrating:\\n1. Real-time public information from Google Search\\n2. The private data source content provided above\\n\\nEnsure the response clearly distinguishes between public and private sources when relevant.`;
         console.log('[QueryService] Composite query built with REAL private data');
       }
 
       const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`;
 
-      // Step 3: Enhanced system prompt for multi-source integration
+      // Enhanced system prompt for multi-source integration
       const enhancedSystemPrompt = `You are a world-class intelligence analyst with access to TWO distinct information streams:
 
 1. **Google Search Results**: Real-time, publicly available information from the web
@@ -317,14 +123,14 @@ Your task:
         },
       };
 
-      // Step 4: Make API call with exponential backoff
+      // Make API call with exponential backoff
       const result = await makeApiCallWithBackoff(apiUrl, payload);
 
       const candidate = result.candidates?.[0];
       if (candidate && candidate.content?.parts?.[0]?.text) {
         const text = candidate.content.parts[0].text;
 
-        // Step 5: Extract grounding sources (public citations)
+        // Extract grounding sources (public citations)
         const citations: Citation[] = [];
         const groundingMetadata = candidate.groundingMetadata;
 
@@ -363,10 +169,15 @@ Your task:
 
   /**
    * Main method to synthesize a query with multi-source integration
+   * 
+   * @param request - The query request
+   * @param userId - User ID for query history
+   * @param privateContext - Optional private data context (passed from server-side API route)
    */
   static async synthesizeQuery(
     request: QueryRequest,
-    userId?: string
+    userId?: string,
+    privateContext?: string
   ): Promise<SynthesizedResult & { privateContext?: string }> {
     const startTime = Date.now();
 
@@ -375,9 +186,9 @@ Your task:
       throw new Error(validation.error || 'Invalid query');
     }
 
-    const { synthesis, citations, privateContext } = await this.synthesizeWithAI(
+    const { synthesis, citations } = await this.synthesizeWithAI(
       request.query,
-      userId
+      privateContext
     );
 
     const result: SynthesizedResult & { privateContext?: string } = {
@@ -393,8 +204,8 @@ Your task:
 
     console.log('[QueryService] Query synthesized in', result.processingTimeMs, 'ms');
 
-    // IMPORTANT: Save query history even when synthesis succeeds
-    if (userId) {
+    // Save query history (client-side only)
+    if (userId && typeof window !== 'undefined') {
       try {
         await saveQueryHistory({
           userId,
