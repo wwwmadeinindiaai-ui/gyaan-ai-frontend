@@ -111,7 +111,7 @@ export async function POST(request: NextRequest) {
 
     // Step 1: Normalize items
     console.log('[IngestAPI] Step 1: Normalizing items');
-    const normalizedItems = await normalizer.normalizeBatch(items, source);
+    const normalizedItems = await normalizer.normalizeBatch(items, { name: source, id: source.toLowerCase() });
     stats.normalized = normalizedItems.length;
     stats.failed = stats.received - stats.normalized;
 
