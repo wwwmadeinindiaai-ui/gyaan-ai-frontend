@@ -184,6 +184,7 @@ export class SearchIndexer {
   
 
   /**
+    }
    * Index multiple items in batch
    * 
    * More efficient than indexing items one by one.
