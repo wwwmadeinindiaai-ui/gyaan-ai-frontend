@@ -1,6 +1,8 @@
 import type { SearchConnectorResult } from "./types";
 import { Timestamp } from "firebase/firestore";
 
+// The core result type for all connectors; you can export this if you
+// want to ensure both `ConnectorOutput` and `SearchConnectorResult` are the same
 export interface ConnectorOutput {
   title: string;
   url: string;
@@ -10,6 +12,7 @@ export interface ConnectorOutput {
   publishedAt?: string;
 }
 
+// Utility function for safe fetches with error/log handling
 async function safeFetch(url: string, options: RequestInit = {}) {
   try {
     const res = await fetch(url, { ...options, cache: "no-store" });
@@ -21,7 +24,9 @@ async function safeFetch(url: string, options: RequestInit = {}) {
   }
 }
 
-export async function fetchFromYouTube(query: string): Promise<ConnectorOutput[]> {
+// ---- Connector Functions (now use SearchConnectorResult[] output) ----
+
+export async function fetchFromYouTube(query: string): Promise<SearchConnectorResult[]> {
   try {
     const key = process.env.YOUTUBE_API_KEY!;
     if (!key) return [];
@@ -36,10 +41,12 @@ export async function fetchFromYouTube(query: string): Promise<ConnectorOutput[]
       source: "YouTube",
       publishedAt: v.snippet.publishedAt,
     }));
-  } catch { return []; }
+  } catch {
+    return [];
+  }
 }
 
-export async function fetchFromUnsplash(query: string): Promise<ConnectorOutput[]> {
+export async function fetchFromUnsplash(query: string): Promise<SearchConnectorResult[]> {
   try {
     const accessKey = process.env.UNSPLASH_ACCESS_KEY!;
     if (!accessKey) return [];
@@ -53,10 +60,12 @@ export async function fetchFromUnsplash(query: string): Promise<ConnectorOutput[
       snippet: img.description,
       source: "Unsplash",
     }));
-  } catch { return []; }
+  } catch {
+    return [];
+  }
 }
 
-export async function fetchFromGoogleSearch(query: string): Promise<ConnectorOutput[]> {
+export async function fetchFromGoogleSearch(query: string): Promise<SearchConnectorResult[]> {
   try {
     const key = process.env.GOOGLE_SEARCH_API_KEY!;
     const cx = process.env.GOOGLE_SEARCH_ENGINE_ID!;
@@ -71,10 +80,12 @@ export async function fetchFromGoogleSearch(query: string): Promise<ConnectorOut
       thumbnail: i.pagemap?.cse_image?.[0]?.src,
       source: "Google Search",
     }));
-  } catch { return []; }
+  } catch {
+    return [];
+  }
 }
 
-export async function fetchFromWikipedia(query: string): Promise<ConnectorOutput[]> {
+export async function fetchFromWikipedia(query: string): Promise<SearchConnectorResult[]> {
   const url = `https://en.wikipedia.org/w/api.php?action=query&list=search&format=json&srsearch=${encodeURIComponent(query)}`;
   for (let attempt = 0; attempt < 3; attempt++) {
     const json = await safeFetch(url);
@@ -93,7 +104,7 @@ export async function fetchFromWikipedia(query: string): Promise<ConnectorOutput
   return [];
 }
 
-export async function fetchFromNewsAPI(query: string): Promise<ConnectorOutput[]> {
+export async function fetchFromNewsAPI(query: string): Promise<SearchConnectorResult[]> {
   try {
     const apiKey = process.env.NEWSAPI_KEY!;
     if (!apiKey) return [];
@@ -108,10 +119,13 @@ export async function fetchFromNewsAPI(query: string): Promise<ConnectorOutput[]
       source: article.source?.name || "NewsAPI",
       publishedAt: article.publishedAt,
     }));
-  } catch { return []; }
+  } catch {
+    return [];
+  }
 }
 
-export async function fetchFromConnector(service: string, query: string): Promise<ConnectorOutput[]> {
+// Dispatch to appropriate connector by name, using the correct typing
+export async function fetchFromConnector(service: string, query: string): Promise<SearchConnectorResult[]> {
   try {
     switch (service) {
       case "youtube":
