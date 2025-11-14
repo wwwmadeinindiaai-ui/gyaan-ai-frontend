@@ -181,10 +181,10 @@ export class SearchIndexer {
       console.error(`[SearchIndexer] Failed to index item ${item.id}:`, error);
       throw error;
     }
+      }
   
 
   /**
-    }
    * Index multiple items in batch
    * 
    * More efficient than indexing items one by one.
