@@ -197,7 +197,7 @@ export class SearchIndexer {
   async indexBatch(
     items: NormalizedItem[],
     batchSize: number = 1000
-  ): Promise<number[]> {
+    ): Promise<number[]> {
     if (!this.isInitialized || !this.index) {
       throw new Error('SearchIndexer not initialized. Call initialize() first.');
     }
