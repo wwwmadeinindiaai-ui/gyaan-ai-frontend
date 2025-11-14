@@ -14,6 +14,9 @@ import {
   AVAILABLE_CONNECTORS,
 } from "@/lib/connectors";
 
+// Add necessary type imports for normalization
+import type { BaseCitation, SearchConnectorResult } from "@/lib/types";
+
 /**
  * Initialize Firebase Admin SDK (server-side only)
  */
@@ -246,59 +249,48 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     console.log('[API] Query synthesized successfully in', result.processingTimeMs, 'ms');
     console.log('[API] Citations found:', result.citations.length);
 
-  type AnyCitation = {
-  id?: string | number;
-  title?: string;
-  snippet?: string;
-  source?: string;
-  url?: string;
-  date?: string;
-};
+    // --- Citation normalization using safe type guard ---
+    const connectorCitations = externalResults.map((item, index) => ({
+      id: `connector-${index + 1}`,
+      title: item.title,
+      snippet: item.snippet,
+      source: item.source,
+      url: item.url,
+      date: item.publishedAt
+        ? new Date(item.publishedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+        : undefined,
+    }));
+    const allCitations = [...connectorCitations, ...result.citations];
 
-const connectorCitations = externalResults.map((item, index) => ({
-  id: `connector-${index + 1}`,
-  title: item.title,
-  snippet: item.snippet,
-  source: item.source,
-  url: item.url,
-  date: item.publishedAt
-    ? new Date(item.publishedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-    : undefined,
-}));
-const allCitations = [...connectorCitations, ...result.citations];
-
-const normalized = (allCitations as AnyCitation[]).map((citation, index) => {
-  const hasSnippet =
-    "snippet" in citation && typeof citation.snippet === "string";
-  const hasDate =
-    "date" in citation && typeof citation.date === "string";
-
-  return {
-    id: index + 1,
-    title: citation.title ?? citation.source ?? "Source",
-    snippet: hasSnippet
-      ? citation.snippet!
-      : "View the full synthesis for complete context.",
-    source: citation.source ?? "Unknown",
-    url: citation.url ?? "",
-    date: hasDate ? citation.date : undefined,
-  };
-});
-
+    const normalized = (allCitations as BaseCitation[]).map((citation, index) => {
+      const hasSnippet =
+        "snippet" in citation && typeof citation.snippet === "string";
+      const hasDate =
+        "date" in citation && typeof citation.date === "string";
+      return {
+        id: index + 1,
+        title: citation.title ?? citation.source ?? "Source",
+        snippet: hasSnippet
+          ? citation.snippet!
+          : "View the full synthesis for complete context.",
+        source: citation.source ?? "Unknown",
+        url: citation.url ?? "",
+        date: hasDate ? citation.date : undefined,
+      };
+    });
 
     // Return dashboard-compatible response
-   return NextResponse.json(
-  {
-    query: result.query,
-    data: normalized,
-    synthesis: result.synthesis,
-    confidence: result.confidence,
-    processingTimeMs: result.processingTimeMs,
-    privateContext: result.privateContext,
-  },
-  { status: 200 }
-);
-
+    return NextResponse.json(
+      {
+        query: result.query,
+        data: normalized,
+        synthesis: result.synthesis,
+        confidence: result.confidence,
+        processingTimeMs: result.processingTimeMs,
+        privateContext: result.privateContext,
+      },
+      { status: 200 }
+    );
   } catch (error) {
     console.error('[API] Error in query synthesis:', error);
     const errorMessage = error instanceof Error ? error.message : 'Internal server error';
