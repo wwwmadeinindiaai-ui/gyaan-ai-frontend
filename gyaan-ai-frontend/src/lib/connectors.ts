@@ -1,4 +1,5 @@
 /**
+import { fetchFromGDELT } from "./services/gdelt-connector";
  * @fileoverview External data connectors for Gyaan AI
  * @module lib/connectors
  * 
@@ -352,6 +353,9 @@ export async function fetchFromConnector(
       case "newsapi":
         results = await fetchFromNewsAPI(query);
         break;
+              case "gdelt":
+                  results = await fetchFromGDELT(query);
+                break;
       default:
         console.warn(`[Connector] Unknown service: ${service}`);
         return [];
@@ -382,6 +386,7 @@ export const AVAILABLE_CONNECTORS = [
   "unsplash",
   "wikipedia",
   "newsapi",
+    "gdelt",
 ] as const;
 
 export type ConnectorName = typeof AVAILABLE_CONNECTORS[number];
