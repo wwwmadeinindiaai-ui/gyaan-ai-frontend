@@ -1,69 +1,70 @@
 /**
- * Search Indexer Module for Meilisearch Integration
- * * Provides functionality for indexing normalized items into Meilisearch
- * for fast, typo-tolerant full-text search. Handles index configuration,
- * document indexing, and search operations.
- * * @module indexer
- */
+ * Search Indexer Module for Meilisearch Integration
+ * * Provides functionality for indexing normalized items into Meilisearch
+ * for fast, typo-tolerant full-text search. Handles index configuration,
+ * document indexing, and search operations.
+ * * @module meilisearch-indexer
+ */
 
 import { MeiliSearch, Index } from 'meilisearch';
 import { NormalizedItem } from './types/item';
 
 /**
- * Search configuration options
- */
+ * Search configuration options
+ */
 interface SearchConfig {
 	/** Results per page. Default: 20 */
 	hitsPerPage?: number;
-	
+
 	/** Attributes to search in. Default: ['title', 'summary', 'content'] */
 	searchableAttributes?: string[];
-	
+
 	/** Attributes to display in results. Default: all except 'content' */
 	displayedAttributes?: string[];
-	
+
 	/** Attributes to filter on. Default: ['type', 'source', 'lang', 'domain'] */
 	filterableAttributes?: string[];
-	
+
 	/** Attributes to sort by. Default: ['date'] */
 	sortableAttributes?: string[];
 }
 
 /**
- * Search result with Meilisearch metadata
- */
-export interface SearchResult {
+ * Meilisearch result wrapper for the SearchIndexer's internal use.
+ * NOTE: This differs from the application-facing SearchResult in types/item.ts.
+ */
+export interface MeiliSearchResponse {
 	/** Array of matching items */
 	hits: NormalizedItem[];
-	
+
 	/** Total number of results */
 	totalHits: number;
-	
+
 	/** Query execution time in ms */
 	processingTime: number;
-	
+
 	/** Current page number */
 	page: number;
-	
+
 	/** Results per page */
 	hitsPerPage: number;
 }
 
 /**
- * SearchIndexer class for Meilisearch operations
- * * Manages the connection to Meilisearch, index configuration,
- * and provides methods for indexing and searching normalized items.
- * * @example
- * ```typescript
- * const indexer = new SearchIndexer({
- * host: 'http://localhost:7700',
- * apiKey: 'masterKey'
- * });
- * await indexer.initialize();
- * await indexer.indexBatch(items);
- * const results = await indexer.search('climate change');
- * ```
- */
+ * SearchIndexer class for Meilisearch operations
+ * * Manages the connection to Meilisearch, index configuration,
+ * and provides methods for indexing and searching normalized items.
+ * * @example
+ * ```typescript
+ * const indexer = new SearchIndexer({
+ * host: 'http://localhost:7700',
+ * apiKey: 'masterKey'
+ * });
+ * await indexer.initialize();
+ * await indexer.indexBatch(items);
+ * const results = await indexer.search('climate change');
+ * ```
+ */
 export class SearchIndexer {
 	private client: MeiliSearch;
 	private index: Index | null = null;
@@ -175,7 +176,7 @@ export class SearchIndexer {
 			throw error;
 		}
 	}
-	
+
 
 	/**
 	 * Index multiple items in batch
@@ -204,7 +205,7 @@ export class SearchIndexer {
 		// Process in batches
 		for (let i = 0; i < items.length; i += batchSize) {
 			const batch = items.slice(i, i + batchSize);
-			
+
 			try {
 				const task = await this.index.addDocuments(batch);
 				taskUids.push(task.taskUid);
@@ -222,7 +223,7 @@ export class SearchIndexer {
 
 		const duration = Date.now() - startTime;
 		const itemsPerSecond = (items.length / duration) * 1000;
-		
+
 		console.log(
 			`[SearchIndexer] Batch indexing complete: ${items.length} items in ${duration}ms (${itemsPerSecond.toFixed(0)} items/sec)`
 		);
@@ -261,7 +262,7 @@ export class SearchIndexer {
 			page?: number;
 			attributesToHighlight?: string[];
 		}
-	): Promise<SearchResult> {
+	): Promise<MeiliSearchResponse> {
 		if (!this.isInitialized || !this.index) {
 			throw new Error('SearchIndexer not initialized. Call initialize() first.');
 		}
@@ -269,7 +270,7 @@ export class SearchIndexer {
 		const startTime = Date.now();
 
 		try {
-			// FIX: Use non-null assertion (!) on this.config.hitsPerPage to tell TypeScript 
+			// FIX: Use non-null assertion (!) on this.config.hitsPerPage to tell TypeScript 
 			// that it is definitely a number, resolving the 'possibly undefined' error in the offset calculation.
 			const hitsPerPage = options?.hitsPerPage || this.config.hitsPerPage!;
 			const page = options?.page || 1;
@@ -306,7 +307,7 @@ export class SearchIndexer {
 				processingTime: result.processingTimeMs,
 				page: options?.page || 1,
 				// Ensure hitsPerPage used in return also matches the calculated number
-				hitsPerPage: hitsPerPage, 
+				hitsPerPage: hitsPerPage,
 			};
 		} catch (error) {
 			console.error('[SearchIndexer] Search failed:', error);
@@ -388,17 +389,17 @@ export class SearchIndexer {
 		}
 
 		const startTime = Date.now();
-		
+
 		console.log(`[SearchIndexer] Waiting for task ${taskUid}`);
 
 		while (Date.now() - startTime < timeoutMs) {
 			const task = await this.client.getTask(taskUid);
-			
+
 			if (task.status === 'succeeded') {
 				console.log(`[SearchIndexer] Task ${taskUid} succeeded`);
 				return;
 			}
-			
+
 			if (task.status === 'failed') {
 				console.error(`[SearchIndexer] Task ${taskUid} failed:`, task.error);
 				throw new Error(`Task ${taskUid} failed: ${JSON.stringify(task.error)}`);
