@@ -71,6 +71,21 @@ export class ItemNormalizer {
     // In a real scenario, this would use a library like 'cheerio' or similar.
     return htmlContent.replace(/<[^>]*>?/gm, '');
   }
+
+    /**
+   * Normalize a batch of items from a connector.
+   * @param items Array of raw items to normalize
+   * @param sourceInfo Source information (name and id)
+   * @returns Promise resolving to array of normalized items
+   */
+  public static async normalizeBatch(
+    items: RawDataItem[],
+    sourceInfo: { name: string; id: string }
+  ): Promise<NormalizedItem[]> {
+    return Promise.all(
+      items.map((item) => this.normalize(item, sourceInfo.id))
+    );
+  }
 }
 
 /**
