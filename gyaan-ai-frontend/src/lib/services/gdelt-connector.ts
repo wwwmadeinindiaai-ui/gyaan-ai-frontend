@@ -294,5 +294,41 @@ export class GDELTConnector {
   }
 }
 
+// ========================================
+// STANDARD CONNECTOR INTERFACE ADAPTER
+// ========================================
+
+/**
+ * Standard connector interface adapter for GDELT
+ * Converts GDELT-specific format to SearchConnectorResult format
+ * for compatibility with other connectors in the system
+ * 
+ * @param query - Search query
+ * @returns Array of results in standard SearchConnectorResult format
+ */
+export async function fetchFromGDELT(query: string): Promise<any[]> {
+  try {
+    const connector = new GDELTConnector();
+    const results = await connector.search({ 
+      query, 
+      maxRecords: 10,
+      timespan: 1440 // 24 hours
+    });
+    
+    // Map GDELT-specific format to standard connector format
+    return results.map(item => ({
+      title: item.title,
+      url: item.url,
+      snippet: item.summary,           // Map summary -> snippet
+      thumbnail: item.imageUrl,        // Map imageUrl -> thumbnail  
+      source: 'GDELT',
+      publishedAt: item.date.toISOString(), // Convert Date -> ISO string
+    }));
+  } catch (error) {
+    console.error('[fetchFromGDELT] Error:', error);
+    return [];
+  }
+}
+
 // Singleton instance
 export const gdeltConnector = new GDELTConnector();
