@@ -11,6 +11,7 @@
 import type { SearchConnectorResult } from "./types";
 import { Timestamp } from "firebase/firestore";
 import { fetchFromGDELT } from "./services/gdelt-connector";
+import { getFallbackData, isFallbackModeEnabled } from "./connector-fallbacks";
 
 // ========================================
 // TYPES & INTERFACES
@@ -144,6 +145,12 @@ function createFallbackResult(service: string, message: string): SearchConnector
  */
 export async function fetchFromYouTube(query: string): Promise<SearchConnectorResult[]> {
   try {
+        // Check for fallback mode
+    if (isFallbackModeEnabled()) {
+      console.log('[YouTube] Using fallback data');
+      return getFallbackData('youtube');
+    }
+
     const key = process.env.YOUTUBE_API_KEY;
     if (!key) {
       console.log('[YouTube] API key not configured, skipping');
@@ -184,7 +191,13 @@ export async function fetchFromUnsplash(query: string): Promise<SearchConnectorR
     const accessKey = process.env.UNSPLASH_ACCESS_KEY;
     if (!accessKey) {
       console.log('[Unsplash] Access key not configured, skipping');
-      return [];
+      r
+            // Check for fallback mode
+    if (isFallbackModeEnabled()) {
+      console.log('[Unsplash] Using fallback data');
+      return getFallbackData('unsplash');
+    }
+eturn [];
     }
     
     const url = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=10&client_id=${accessKey}`;
@@ -220,7 +233,13 @@ export async function fetchFromGoogleSearch(query: string): Promise<SearchConnec
     const key = process.env.GOOGLE_SEARCH_API_KEY;
     const cx = process.env.GOOGLE_SEARCH_ENGINE_ID;
     
-    if (!key || !cx) {
+    if 
+          // Check for fallback mode
+    if (isFallbackModeEnabled()) {
+      console.log('[Google Search] Using fallback data');
+      return getFallbackData('google-search');
+    }
+(!key || !cx) {
       console.log('[Google Search] API credentials not configured, skipping');
       return [];
     }
@@ -253,7 +272,12 @@ export async function fetchFromGoogleSearch(query: string): Promise<SearchConnec
  * @param query - Search query
  * @returns Array of Wikipedia article results or empty array on error
  */
-export async function fetchFromWikipedia(query: string): Promise<SearchConnectorResult[]> {
+  // Check for fallback mode
+  if (isFallbackModeEnabled()) {
+    console.log('[Wikipedia] Using fallback data');
+    return getFallbackData('wikipedia');
+  }
+export async function fetchFromNewsAPI(query: string): Promise<SearchConnectorResult[]> {
   const url = `https://en.wikipedia.org/w/api.php?action=query&list=search&format=json&srsearch=${encodeURIComponent(query)}&origin=*`;
   
   // Retry up to 3 times with exponential backoff
@@ -288,6 +312,12 @@ export async function fetchFromWikipedia(query: string): Promise<SearchConnector
  */
 export async function fetchFromNewsAPI(query: string): Promise<SearchConnectorResult[]> {
   try {
+        // Check for fallback mode
+    if (isFallbackModeEnabled()) {
+      console.log('[NewsAPI] Using fallback data');
+      return getFallbackData('newsapi');
+    }
+
     const apiKey = process.env.NEWSAPI_KEY;
     if (!apiKey) {
       console.log('[NewsAPI] API key not configured, skipping');
