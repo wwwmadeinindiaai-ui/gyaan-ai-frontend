@@ -83,9 +83,9 @@ export class SearchIndexer {
 			displayedAttributes: [
 				'id',
 				'title',
-				'snippet', // Changed 'summary' to 'snippet' based on NormalizedItem
+				'summary',
 				'url',
-				'thumbnail', // Changed 'imageUrl' to 'thumbnail' based on NormalizedItem
+				'imageUrl',
 				'date',
 				'type',
 				'source',
@@ -269,8 +269,9 @@ export class SearchIndexer {
 		const startTime = Date.now();
 
 		try {
-			// FIX: Extract hitsPerPage and page into constants to resolve Type Error (Object is possibly 'undefined')
-			const hitsPerPage = options?.hitsPerPage || this.config.hitsPerPage;
+			// FIX: Use non-null assertion (!) on this.config.hitsPerPage to tell TypeScript 
+			// that it is definitely a number, resolving the 'possibly undefined' error in the offset calculation.
+			const hitsPerPage = options?.hitsPerPage || this.config.hitsPerPage!;
 			const page = options?.page || 1;
 
 			const searchParams: any = {
@@ -304,7 +305,8 @@ export class SearchIndexer {
 				totalHits: result.estimatedTotalHits || 0,
 				processingTime: result.processingTimeMs,
 				page: options?.page || 1,
-				hitsPerPage: options?.hitsPerPage || this.config.hitsPerPage,
+				// Ensure hitsPerPage used in return also matches the calculated number
+				hitsPerPage: hitsPerPage, 
 			};
 		} catch (error) {
 			console.error('[SearchIndexer] Search failed:', error);
