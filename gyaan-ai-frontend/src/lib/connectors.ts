@@ -1,5 +1,4 @@
 /**
-import { fetchFromGDELT } from "./services/gdelt-connector";
  * @fileoverview External data connectors for Gyaan AI
  * @module lib/connectors
  * 
@@ -11,6 +10,7 @@ import { fetchFromGDELT } from "./services/gdelt-connector";
 
 import type { SearchConnectorResult } from "./types";
 import { Timestamp } from "firebase/firestore";
+import { fetchFromGDELT } from "./services/gdelt-connector";
 
 // ========================================
 // TYPES & INTERFACES
