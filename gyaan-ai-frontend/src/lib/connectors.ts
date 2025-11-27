@@ -191,7 +191,6 @@ export async function fetchFromUnsplash(query: string): Promise<SearchConnectorR
     const accessKey = process.env.UNSPLASH_ACCESS_KEY;
     if (!accessKey) {
       console.log('[Unsplash] Access key not configured, skipping');
-      r
             // Check for fallback mode
     if (isFallbackModeEnabled()) {
       console.log('[Unsplash] Using fallback data');
