@@ -233,7 +233,6 @@ export async function fetchFromGoogleSearch(query: string): Promise<SearchConnec
     const key = process.env.GOOGLE_SEARCH_API_KEY;
     const cx = process.env.GOOGLE_SEARCH_ENGINE_ID;
     
-    if 
           // Check for fallback mode
     if (isFallbackModeEnabled()) {
       console.log('[Google Search] Using fallback data');
