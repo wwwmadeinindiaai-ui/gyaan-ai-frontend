@@ -271,10 +271,20 @@ if (!key || !cx) {
  * @param query - Search query
  * @returns Array of Wikipedia article results or empty array on error
  */
+export async function fetchFromWikipedia(query: string): Promise<SearchConnectorResult[]> {
+    try {
   // Check for fallback mode
   if (isFallbackModeEnabled()) {
     console.log('[Wikipedia] Using fallback data');
     return getFallbackData('wikipedia');
+  }
+
+          // If not in fallback mode, return empty array
+          return [];
+        } catch (err) {
+          console.error('[Wikipedia] Unexpected error:', err);
+          return [];
+        }
   }
 export async function fetchFromNewsAPI(query: string): Promise<SearchConnectorResult[]> {
   const url = `https://en.wikipedia.org/w/api.php?action=query&list=search&format=json&srsearch=${encodeURIComponent(query)}&origin=*`;
