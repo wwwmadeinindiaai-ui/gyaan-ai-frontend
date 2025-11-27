@@ -5,7 +5,6 @@ import AuthProvider from './components/auth-provider';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import NavBar from './components/NavBar';
-import Navigation from './components/Navigation';
 import Footer from './components/Footer';
 
 const inter = Inter({
@@ -30,7 +29,6 @@ export default async function RootLayout({
       <body className={`${inter.variable} antialiased`}>
         <AuthProvider session={session}>
           <NavBar />
-          <Navigation />
           {children}
           <Footer />
         </AuthProvider>
