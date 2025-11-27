@@ -238,7 +238,7 @@ export async function fetchFromGoogleSearch(query: string): Promise<SearchConnec
       console.log('[Google Search] Using fallback data');
       return getFallbackData('google-search');
     }
-(!key || !cx) {
+if (!key || !cx) {
       console.log('[Google Search] API credentials not configured, skipping');
       return [];
     }
