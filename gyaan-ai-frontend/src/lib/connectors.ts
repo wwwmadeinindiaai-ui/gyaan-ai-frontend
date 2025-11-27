@@ -197,7 +197,7 @@ export async function fetchFromUnsplash(query: string): Promise<SearchConnectorR
       console.log('[Unsplash] Using fallback data');
       return getFallbackData('unsplash');
     }
-eturn [];
+return [];
     }
     
     const url = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=10&client_id=${accessKey}`;
