@@ -286,34 +286,6 @@ export async function fetchFromWikipedia(query: string): Promise<SearchConnector
           return [];
         }
   }
-export async function fetchFromNewsAPI(query: string): Promise<SearchConnectorResult[]> {
-  const url = `https://en.wikipedia.org/w/api.php?action=query&list=search&format=json&srsearch=${encodeURIComponent(query)}&origin=*`;
-  
-  // Retry up to 3 times with exponential backoff
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const json = await safeFetch(url, {}, `Wikipedia (attempt ${attempt + 1})`);
-    
-    if (json && json.query?.search && Array.isArray(json.query.search)) {
-      return json.query.search
-        .filter((i: any) => i.title)
-        .map((i: any) => ({
-          title: i.title,
-          url: `https://en.wikipedia.org/wiki/${encodeURIComponent(i.title)}`,
-          snippet: i.snippet ? i.snippet.replace(/<[^>]*>/g, '') : undefined,
-          source: "Wikipedia",
-        }));
-    }
-    
-    // Exponential backoff: wait 2s, 4s, 8s
-    if (attempt < 2) {
-      await new Promise((res) => setTimeout(res, 2000 * Math.pow(2, attempt)));
-    }
-  }
-  
-  console.warn('[Wikipedia] All retry attempts failed');
-  return [];
-}
-
 /**
  * Fetches news articles from NewsAPI
  * @param query - Search query
